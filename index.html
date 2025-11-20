@@ -341,6 +341,30 @@
       await setDoc(ref, update, { merge: true });
     }
 
+    // 🔍 NUEVA FUNCIÓN:
+    // Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
+    function getExistingReservationForSlot(dateIso, slot) {
+      const prefix = `${dateIso}__${slot}__`;
+
+      for (const key in currentData) {
+        const value = currentData[key];
+        if (!value) continue; // sin reserva
+
+        if (typeof value === "number" || value === true) {
+          if (key.startsWith(prefix)) {
+            const parts = key.split("__");
+            const cls   = parts[2] || "";
+            return {
+              id: key,
+              className: cls,
+              value
+            };
+          }
+        }
+      }
+      return null;
+    }
+
     // Construir cabecera fija de columnas
     function buildColumnsHeader() {
       columnsHeader.innerHTML = "";
@@ -430,6 +454,7 @@
       calendarTable.appendChild(tbody);
     }
 
+    // 🧠 LÓGICA DE RESERVA / LIBERACIÓN ACTUALIZADA
     calendarTable.addEventListener("click", async (event) => {
       const cell = event.target.closest("td");
       if (!cell || !cell.classList.contains("reservable")) return;
@@ -440,13 +465,22 @@
       const value = currentData[id];   // puede ser undefined, true o timestamp (number)
       const now   = Date.now();
 
-      // Si no hay reserva: crearla con timestamp (ms)
+      // Si no hay reserva en esta celda: comprobar antes si la franja ya está ocupada
       if (!value) {
+        const existing = getExistingReservationForSlot(date, slot);
+
+        if (existing) {
+          const reservedClass = existing.className || "otra clase";
+          alert(`No puedes reservar esta franja horaria porque ya está reservada por ${reservedClass}.`);
+          return;
+        }
+
+        // La franja está libre → crear reserva con timestamp (ms)
         await setReservationValue(id, now);
         return;
       }
 
-      // Si es un número, es un timestamp → comprobamos ventana de tiempo
+      // Si es un número, es un timestamp → comprobamos ventana de tiempo para DESHACER
       if (typeof value === "number") {
         const elapsed = now - value;
         if (elapsed <= UNRESERVE_WINDOW_MS) {
@@ -471,5 +505,3 @@
   </script>
 </body>
 </html>
-
-
