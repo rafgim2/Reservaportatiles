@@ -6,7 +6,6 @@
   <title>RESERVA DE PORTÁTILES</title>
   <style>
     :root {
-      /* Anchos fijos para las columnas pegadas */
       --col-date-width: 110px;
       --col-session-width: 90px;
     }
@@ -18,7 +17,6 @@
       background: #f5f5f5;
     }
 
-    /* Barra superior (título + controles) fija */
     .top-bar {
       position: sticky;
       top: 0;
@@ -83,13 +81,8 @@
       border: 1px solid #aaa;
     }
 
-    .legend-color.reserved {
-      background: #e53935;
-    }
-
-    .legend-color.free {
-      background: #ffffff;
-    }
+    .legend-color.reserved { background: #e53935; }
+    .legend-color.free { background: #ffffff; }
 
     .table-container {
       max-width: 100%;
@@ -107,89 +100,71 @@
       table-layout: fixed;
     }
 
-    thead {
-      background: #e1e9f2;
-    }
-
+    /* CABECERA — TODA EN AZULITO */
     thead th {
       position: sticky;
       top: 0;
       z-index: 10;
-      background: #dde3ff;
+      background: #dde3ff; /* <<< AQUÍ EL COLOR DE CABECERA */
       border: 1px solid #ccc;
       padding: 4px 6px;
       text-align: center;
-      white-space: normal;
-      word-break: break-word;
     }
 
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 4px 6px;
-      text-align: center;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    /* Anchos concretos para fecha y sesión */
-    thead th:nth-child(1),
-    tbody td:nth-child(1) {
-      width: var(--col-date-width);
-      min-width: var(--col-date-width);
-      max-width: var(--col-date-width);
-    }
-
-    thead th:nth-child(2),
-    tbody td:nth-child(2) {
-      width: var(--col-session-width);
-      min-width: var(--col-session-width);
-      max-width: var(--col-session-width);
-    }
-
-    /* Fecha y sesión pegadas a la izquierda (sticky) */
+    /* Fecha y Sesión pegadas a la izquierda (solo en la cabecera) */
     thead th:nth-child(1) {
       position: sticky;
       left: 0;
       z-index: 11;
-      background: #e1e9f2;
+      background: #dde3ff; /* <<< SOLO cabecera */
     }
 
     thead th:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
       z-index: 11;
-      background: #e1e9f2;
+      background: #dde3ff; /* <<< SOLO cabecera */
     }
 
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    /* Cuerpo: fecha + sesión pegadas y SIN fondo extra */
     tbody td:nth-child(1) {
       position: sticky;
       left: 0;
       z-index: 11;
-      background: #dde3ff !important;
     }
 
     tbody td:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
       z-index: 11;
-      background: #dde3ff !important;
     }
 
-    /* Colores por día (todas las sesiones del mismo día comparten color) */
-    tbody tr.day-a td {
+    /* Colores por día (alternados) */
+    tbody tr.day-a td { background: #ffffff; }
+    tbody tr.day-b td { background: #dde3ff; }
+
+    /* ESTO asegura que Fecha/Sesión del cuerpo también alternen por día */
+    tbody tr.day-a td:nth-child(1),
+    tbody tr.day-a td:nth-child(2) {
       background: #ffffff;
     }
 
-    tbody tr.day-b td {
+    tbody tr.day-b td:nth-child(1),
+    tbody tr.day-b td:nth-child(2) {
       background: #dde3ff;
     }
 
     td.reservable {
       cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease;
-      position: relative; /* para la marca de agua */
+      position: relative;
       overflow: hidden;
+      transition: background 0.15s ease;
     }
 
     td.reservable:hover {
@@ -198,11 +173,10 @@
 
     td.reserved {
       background: #e53935 !important;
-      color: #ffffff;
+      color: white;
       font-weight: 700;
     }
 
-    /* Marca de agua con el nombre de la clase en cada celda de clase */
     td.reservable::before {
       content: attr(data-class);
       position: absolute;
@@ -210,19 +184,13 @@
       left: 50%;
       transform: translate(-50%, -50%);
       font-size: 10px;
-      color: rgba(0, 0, 0, 0.25);
+      color: rgba(0,0,0,0.25);
       pointer-events: none;
-      text-align: center;
       width: 100%;
-      padding: 0 4px;
-      box-sizing: border-box;
-      line-height: 1.2;
+      text-align: center;
     }
 
-    /* Cuando está reservada, la marca de agua más clarita sobre rojo */
-    td.reserved::before {
-      color: rgba(255, 255, 255, 0.6);
-    }
+    td.reserved::before { color: rgba(255,255,255,0.6); }
 
     .info {
       font-size: 11px;
@@ -232,11 +200,9 @@
   </style>
 </head>
 <body>
-  <!-- Barra superior fija -->
+
   <div class="top-bar">
-    <header>
-      <h1>RESERVA DE PORTÁTILES</h1>
-    </header>
+    <header><h1>RESERVA DE PORTÁTILES</h1></header>
 
     <div class="controls">
       <div>
@@ -244,12 +210,8 @@
         <select id="monthSelect"></select>
       </div>
       <div class="legend">
-        <span class="legend-item">
-          <span class="legend-color free"></span> Libre
-        </span>
-        <span class="legend-item">
-          <span class="legend-color reserved"></span> Reservado
-        </span>
+        <span class="legend-item"><span class="legend-color free"></span>Libre</span>
+        <span class="legend-item"><span class="legend-color reserved"></span>Reservado</span>
         <span>Haz doble clic o doble toque para reservar / liberar.</span>
       </div>
     </div>
@@ -257,34 +219,20 @@
 
   <main>
     <div class="table-container">
-      <table id="calendarTable">
-        <!-- Cabecera y cuerpo se generan por JS -->
-      </table>
+      <table id="calendarTable"></table>
     </div>
 
-    <p class="info">
-      * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
-    </p>
-    <p class="info">
-      * Solo se puede realizar una reserva cada 24 horas.
-    </p>
+    <p class="info">* Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.</p>
+    <p class="info">* Solo se puede realizar una reserva cada 24 horas.</p>
   </main>
 
-  <!-- JS con Firestore -->
+  <!-- ==================== JS ==================== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore,
-      doc,
-      onSnapshot,
-      setDoc,
-      deleteField
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, doc, onSnapshot, setDoc, deleteField }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // ⏱ TIEMPO MÁXIMO PARA DESHACER (ms) → ahora 2 minutos
     const UNRESERVE_WINDOW_MS = 2 * 60 * 1000;
-
-    // ⏱ TIEMPO MÁXIMO DE BLOQUEO POR DISPOSITIVO (24h)
     const USER_RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
 
     const firebaseConfig = {
@@ -298,7 +246,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const db = getFirestore(app);
 
     const months = [
       { year: 2025, month: 11, name: "Noviembre 2025" },
@@ -312,249 +260,167 @@
     ];
 
     const classes = [
-      "Infantil 3 años",
-      "Infantil 4 años",
-      "Infantil 5 años",
-      "1ºA",
-      "2ºA",
-      "3ºA",
-      "4ºA",
-      "4ºB",
-      "5ºA",
-      "5ºB",
-      "6ºA",
-      "6ºB"
+      "Infantil 3 años", "Infantil 4 años", "Infantil 5 años",
+      "1ºA","2ºA","3ºA",
+      "4ºA","4ºB",
+      "5ºA","5ºB",
+      "6ºA","6ºB"
     ];
 
-    // Horarios normales (nov–may)
     const defaultSlots = [
-      "9:00-9:45",
-      "9:45-10:30",
-      "10:30-11:15",
-      "11:45-12:30",
-      "12:30-13:15",
-      "13:15-14:00"
+      "9:00-9:45","9:45-10:30","10:30-11:15",
+      "11:45-12:30","12:30-13:15","13:15-14:00"
     ];
 
-    // Horarios especiales para JUNIO 2026
     const juneSlots = [
-      "9:00-9:40",
-      "9:40-10:20",
-      "10:20-11:00",
-      "11:30-12:15",
-      "12:15-13:00"
+      "9:00-9:40","9:40-10:20","10:20-11:00",
+      "11:30-12:15","12:15-13:00"
     ];
 
-    function getSlotsForMonth(monthIndex) {
-      const { year, month } = months[monthIndex];
-      if (year === 2026 && month === 6) {
-        return juneSlots;
-      }
-      return defaultSlots;
+    function getSlotsForMonth(i) {
+      const m = months[i];
+      return (m.year === 2026 && m.month === 6) ? juneSlots : defaultSlots;
     }
 
-    const monthSelect    = document.getElementById("monthSelect");
-    const calendarTable  = document.getElementById("calendarTable");
+    const monthSelect = document.getElementById("monthSelect");
+    const calendarTable = document.getElementById("calendarTable");
 
     let currentMonthIndex = 0;
     let currentData = {};
     let unsubscribe = null;
 
-    function getCurrentDocId() {
-      const { year, month } = months[currentMonthIndex];
-      return `${year}-${String(month).padStart(2, "0")}`;
+    months.forEach((m,i)=>{
+      const o=document.createElement("option");
+      o.value=i;o.textContent=m.name;
+      monthSelect.appendChild(o);
+    });
+
+    monthSelect.value="0";
+
+    monthSelect.addEventListener("change",()=>{
+      subscribeToMonth(parseInt(monthSelect.value));
+    });
+
+    function monthDocRef(i){
+      const {year,month}=months[i];
+      return doc(db,"reservas_portatiles_celdas",`${year}-${String(month).padStart(2,"0")}`);
     }
 
-    function monthDocRef(monthIndex) {
-      const { year, month } = months[monthIndex];
-      const id = `${year}-${String(month).padStart(2, "0")}`;
-      return doc(db, "reservas_portatiles_celdas", id);
-    }
-
-    function buildReservationId(dateIso, slot, className) {
-      return `${dateIso}__${slot}__${className}`;
-    }
-
-    function subscribeToMonth(monthIndex) {
-      if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
-      }
-      currentMonthIndex = monthIndex;
-
-      const ref = monthDocRef(monthIndex);
-      unsubscribe = onSnapshot(ref, (snap) => {
+    function subscribeToMonth(i){
+      if(unsubscribe) unsubscribe();
+      currentMonthIndex=i;
+      unsubscribe = onSnapshot(monthDocRef(i),(snap)=>{
         currentData = snap.exists() ? snap.data() : {};
-        renderMonth(monthIndex);
+        renderMonth(i);
       });
     }
 
-    async function setReservationValue(id, value) {
-      const ref = monthDocRef(currentMonthIndex);
-      const update = {};
-      update[id] = value;
-      await setDoc(ref, update, { merge: true });
+    function buildReservationId(date,slot,cls){
+      return `${date}__${slot}__${cls}`;
     }
 
-    async function clearReservation(id) {
+    async function setReservationValue(id,val){
       const ref = monthDocRef(currentMonthIndex);
-      const update = {};
-      update[id] = deleteField();
-      await setDoc(ref, update, { merge: true });
+      await setDoc(ref,{[id]:val},{merge:true});
     }
 
-    // ➜ CONTROL POR USUARIO (máx. 1 reserva por dispositivo en 24h)
-    const LOCAL_USER_RES_KEY = "reservas_portatiles_mi_reserva";
+    async function clearReservation(id){
+      const ref = monthDocRef(currentMonthIndex);
+      await setDoc(ref,{[id]:deleteField()},{merge:true});
+    }
 
-    function getUserReservationInfo() {
-      try {
-        const raw = localStorage.getItem(LOCAL_USER_RES_KEY);
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (!obj || !obj.fullId || !obj.time) return null;
-
-        const now = Date.now();
-        if (now - obj.time > USER_RESERVATION_TTL_MS) {
-          // Caducada → limpiamos y devolvemos null
-          localStorage.removeItem(LOCAL_USER_RES_KEY);
+    const LOCAL_KEY="reservas_movil";
+    const getUserInfo=()=>{
+      try{
+        const raw=localStorage.getItem(LOCAL_KEY);
+        if(!raw) return null;
+        const obj=JSON.parse(raw);
+        if(!obj) return null;
+        if(Date.now()-obj.time > USER_RESERVATION_TTL_MS){
+          localStorage.removeItem(LOCAL_KEY);
           return null;
         }
         return obj;
-      } catch {
-        return null;
-      }
-    }
+      }catch{ return null; }
+    };
+    const setUserInfo=(id,t)=>localStorage.setItem(LOCAL_KEY,JSON.stringify({id,time:t}));
+    const clearUserInfo=()=>localStorage.removeItem(LOCAL_KEY);
+    const docId=()=>`${months[currentMonthIndex].year}-${String(months[currentMonthIndex].month).padStart(2,"0")}`;
+    const fullId=id=>`${docId()}::${id}`;
 
-    function setUserReservationInfo(fullId, time) {
-      try {
-        const obj = { fullId, time };
-        localStorage.setItem(LOCAL_USER_RES_KEY, JSON.stringify(obj));
-      } catch {
-        // si falla localStorage, simplemente no guardamos
-      }
-    }
-
-    function clearUserReservationInfo() {
-      try {
-        localStorage.removeItem(LOCAL_USER_RES_KEY);
-      } catch {
-        // ignorar
-      }
-    }
-
-    function buildFullReservationId(id) {
-      const docId = getCurrentDocId();
-      return `${docId}::${id}`;
-    }
-
-    // Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
-    function getExistingReservationForSlot(dateIso, slot) {
-      const prefix = `${dateIso}__${slot}__`;
-
-      for (const key in currentData) {
-        const value = currentData[key];
-        if (!value) continue; // sin reserva
-
-        if (typeof value === "number" || value === true) {
-          if (key.startsWith(prefix)) {
-            const parts = key.split("__");
-            const cls   = parts[2] || "";
-            return {
-              id: key,
-              className: cls,
-              value
-            };
-          }
+    function getExistingReservationForSlot(date,slot){
+      const prefix = `${date}__${slot}__`;
+      for(const key in currentData){
+        if(key.startsWith(prefix) && currentData[key]){
+          const cls=key.split("__")[2];
+          return {id:key, className:cls};
         }
       }
       return null;
     }
 
-    // Selector de meses
-    months.forEach((m, index) => {
-      const opt = document.createElement("option");
-      opt.value = index;
-      opt.textContent = m.name;
-      monthSelect.appendChild(opt);
-    });
-
-    monthSelect.addEventListener("change", () => {
-      const idx = parseInt(monthSelect.value, 10);
-      subscribeToMonth(idx);
-    });
-
-    // Obtener días lectivos
-    function getWeekdays(year, month) {
-      const days = [];
-      const date = new Date(year, month - 1, 1);
-      while (date.getMonth() === month - 1) {
-        const day = date.getDay(); // 0=Dom, 1=Lun,...,6=Sab
-        if (day >= 1 && day <= 5) {
-          const d = String(date.getDate()).padStart(2, "0");
-          const m = String(month).padStart(2, "0");
-          const y = year;
-          days.push({
-            iso: `${y}-${m}-${d}`,
-            label: `${d}/${m}/${y}`
-          });
+    function getWeekdays(y,m){
+      const arr=[];
+      const d=new Date(y,m-1,1);
+      while(d.getMonth()==m-1){
+        const wd=d.getDay();
+        if(wd>=1 && wd<=5){
+          const dd=String(d.getDate()).padStart(2,"0");
+          const mm=String(m).padStart(2,"0");
+          arr.push({iso:`${y}-${mm}-${dd}`,label:`${dd}/${mm}/${y}`});
         }
-        date.setDate(date.getDate() + 1);
+        d.setDate(d.getDate()+1);
       }
-      return days;
+      return arr;
     }
 
-    function renderMonth(monthIndex) {
-      const { year, month } = months[monthIndex];
-      const days = getWeekdays(year, month);
-      const slotsForMonth = getSlotsForMonth(monthIndex);
-      const saved = currentData || {};
+    function renderMonth(i){
+      const {year,month}=months[i];
+      const days=getWeekdays(year,month);
+      const slots=getSlotsForMonth(i);
+      const saved=currentData||{};
 
-      calendarTable.innerHTML = "";
+      calendarTable.innerHTML="";
 
-      // CABECERA (thead)
-      const thead = document.createElement("thead");
-      const headerRow = document.createElement("tr");
-      const labels = ["Fecha", "Sesión", ...classes];
-      labels.forEach(text => {
-        const th = document.createElement("th");
-        th.textContent = text;
-        headerRow.appendChild(th);
+      const thead=document.createElement("thead");
+      const trH=document.createElement("tr");
+      ["Fecha","Sesión",...classes].forEach(t=>{
+        const th=document.createElement("th");
+        th.textContent=t;
+        trH.appendChild(th);
       });
-      thead.appendChild(headerRow);
+      thead.appendChild(trH);
       calendarTable.appendChild(thead);
 
-      // CUERPO (tbody)
-      const tbody = document.createElement("tbody");
+      const tbody=document.createElement("tbody");
 
-      let useAlt = false; // alterna colores por día
+      let alt=false;
 
-      days.forEach(day => {
-        useAlt = !useAlt;
-        const dayClass = useAlt ? "day-a" : "day-b";
+      days.forEach(day=>{
+        alt=!alt;
+        const classDay = alt ? "day-a" : "day-b";
 
-        slotsForMonth.forEach(slot => {
-          const tr = document.createElement("tr");
-          tr.classList.add(dayClass);
+        slots.forEach(slot=>{
+          const tr=document.createElement("tr");
+          tr.classList.add(classDay);
 
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = day.label;
-          tr.appendChild(tdFecha);
+          const tdF=document.createElement("td");
+          tdF.textContent=day.label;
+          tr.appendChild(tdF);
 
-          const tdSlot = document.createElement("td");
-          tdSlot.textContent = slot;
-          tr.appendChild(tdSlot);
+          const tdS=document.createElement("td");
+          tdS.textContent=slot;
+          tr.appendChild(tdS);
 
-          classes.forEach(cls => {
-            const td = document.createElement("td");
+          classes.forEach(cls=>{
+            const td=document.createElement("td");
             td.classList.add("reservable");
-            td.dataset.date = day.iso;
-            td.dataset.slot = slot;
-            td.dataset.class = cls; // usado para la marca de agua
+            td.dataset.date=day.iso;
+            td.dataset.slot=slot;
+            td.dataset.class=cls;
 
-            const id = buildReservationId(day.iso, slot, cls);
-            if (saved[id]) {
-              td.classList.add("reserved");
-            }
+            const id=buildReservationId(day.iso,slot,cls);
+            if(saved[id]) td.classList.add("reserved");
 
             tr.appendChild(td);
           });
@@ -566,114 +432,80 @@
       calendarTable.appendChild(tbody);
     }
 
-    // 🧠 LÓGICA DE RESERVA / LIBERACIÓN CON DOBLE CLIC / DOBLE TOQUE
-    const DOUBLE_CLICK_MS = 400;
-    let lastCellId = null;
-    let lastClickTime = 0;
+    const DOUBLE_MS=400;
+    let last=null,lastTime=0;
 
-    async function activarCelda(cell) {
-      const { date, slot, class: className } = cell.dataset;
-      const id = buildReservationId(date, slot, className);
-      const fullId = buildFullReservationId(id);
+    async function activarCelda(cell){
+      const {date,slot,class:cls}=cell.dataset;
+      const id=buildReservationId(date,slot,cls);
+      const fId=fullId(id);
+      const now=Date.now();
+      const val=currentData[id];
 
-      const value = currentData[id];   // puede ser undefined, true o timestamp (number)
-      const now   = Date.now();
+      if(!val){
+        let info=getUserInfo();
 
-      // Si NO hay reserva en esta celda → queremos crear una nueva
-      if (!value) {
-        // 1) Comprobar si el usuario YA tiene una reserva activa en las últimas 24h
-        let userInfo = getUserReservationInfo();
-
-        if (userInfo) {
-          // Desglosamos la reserva guardada: docId::resId
-          const [docId, resId] = userInfo.fullId.split("::");
-
-          // Si la reserva guardada corresponde al documento (mes) actual,
-          // comprobamos si REALMENTE sigue existiendo en Firestore
-          if (docId === getCurrentDocId()) {
-            const stillExists = currentData && currentData[resId];
-
-            // Si ya no existe (alguien se la ha quitado), borramos la marca local
-            if (!stillExists) {
-              clearUserReservationInfo();
-              userInfo = null; // como si no tuviera reserva
+        if(info){
+          const [dId,resId]=info.id.split("::");
+          if(dId===docId()){
+            if(!currentData[resId]){
+              clearUserInfo();
+              info=null;
             }
           }
         }
 
-        if (userInfo) {
-          // Aquí solo llegamos si la reserva guardada sigue activa
+        if(info){
           alert("Ya tienes una reserva activa en las últimas 24 horas.");
           return;
         }
 
-        // 2) Comprobar si la franja ya está ocupada por otra clase
-        const existing = getExistingReservationForSlot(date, slot);
-        if (existing) {
-          const reservedClass = existing.className || "otra clase";
-          alert(`No puedes reservar esta franja horaria porque ya está reservada por ${reservedClass}.`);
+        const existing=getExistingReservationForSlot(date,slot);
+        if(existing){
+          alert("Esta franja ya está reservada por "+existing.className);
           return;
         }
 
-        // 3) La franja está libre → crear reserva con timestamp (ms)
-        await setReservationValue(id, now);
-        // guardar la reserva del usuario en localStorage (con tiempo)
-        setUserReservationInfo(fullId, now);
+        await setReservationValue(id,now);
+        setUserInfo(fId,now);
         return;
       }
 
-      // Si es un número, es un timestamp → comprobamos ventana de tiempo para DESHACER
-      if (typeof value === "number") {
-        const elapsed = now - value;
-        if (elapsed <= UNRESERVE_WINDOW_MS) {
+      if(typeof val==="number"){
+        if(now-val <= UNRESERVE_WINDOW_MS){
           await clearReservation(id);
-          // si esta reserva era la del usuario, limpiamos su marca
-          const userInfo = getUserReservationInfo();
-          if (userInfo && userInfo.fullId === fullId) {
-            clearUserReservationInfo();
-          }
+          const info=getUserInfo();
+          if(info && info.id===fId) clearUserInfo();
         } else {
           alert("Esta reserva ya no se puede modificar.");
         }
         return;
       }
 
-      // Compatibilidad con reservas antiguas (valor true): se permite borrar siempre
-      if (value === true) {
+      if(val===true){
         await clearReservation(id);
-        const userInfo = getUserReservationInfo();
-        if (userInfo && userInfo.fullId === fullId) {
-          clearUserReservationInfo();
-        }
+        const info=getUserInfo();
+        if(info && info.id===fId) clearUserInfo();
         return;
       }
     }
 
-    calendarTable.addEventListener("click", (event) => {
-      const cell = event.target.closest("td.reservable");
-      if (!cell) return;
+    calendarTable.addEventListener("click",(e)=>{
+      const cell=e.target.closest("td.reservable");
+      if(!cell) return;
+      const id=`${cell.dataset.date}__${cell.dataset.slot}__${cell.dataset.class}`;
+      const now=Date.now();
 
-      const uniqueId = `${cell.dataset.date}__${cell.dataset.slot}__${cell.dataset.class}`;
-      const now = Date.now();
-
-      if (lastCellId === uniqueId && (now - lastClickTime) <= DOUBLE_CLICK_MS) {
-        // Doble clic / doble toque → activar
+      if(last===id && now-lastTime <= DOUBLE_MS){
         activarCelda(cell);
-        lastCellId = null;
-        lastClickTime = 0;
+        last=null;lastTime=0;
       } else {
-        // Primer clic → solo marcar el tiempo
-        lastCellId = uniqueId;
-        lastClickTime = now;
+        last=id;lastTime=now;
       }
     });
 
-    // Inicializar
-    monthSelect.value = "0";
     subscribeToMonth(0);
   </script>
+
 </body>
 </html>
-
-
-
