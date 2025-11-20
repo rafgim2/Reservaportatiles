@@ -249,8 +249,8 @@
       * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
     <p class="info">
-  * Solo se puede realizar una reserva cada 24 horas.
-</p>
+      * Solo se puede realizar una reserva cada 24 horas desde el mismo dispositivo.
+    </p>
   </main>
 
   <!-- JS con Firestore -->
@@ -298,9 +298,9 @@
       "Infantil 3 años",
       "Infantil 4 años",
       "Infantil 5 años",
-      "1ºA",
-      "2ºA",
-      "3ºA",
+      "1º",
+      "2º",
+      "3º",
       "4ºA",
       "4ºB",
       "5ºA",
@@ -558,14 +558,33 @@
 
       // Si NO hay reserva en esta celda → queremos crear una nueva
       if (!value) {
-        // comprobar si el usuario YA tiene una reserva activa en las últimas 24h
-        const userInfo = getUserReservationInfo();
+        // 1) Comprobar si el usuario YA tiene una reserva activa en las últimas 24h
+        let userInfo = getUserReservationInfo();
+
         if (userInfo) {
-          alert("Ya tienes una reserva activa. No puedes hacer otra hasta dentro de 24 horas.");
+          // Desglosamos la reserva guardada: docId::resId
+          const [docId, resId] = userInfo.fullId.split("::");
+
+          // Si la reserva guardada corresponde al documento (mes) actual,
+          // comprobamos si REALMENTE sigue existiendo en Firestore
+          if (docId === getCurrentDocId()) {
+            const stillExists = currentData && currentData[resId];
+
+            // Si ya no existe (alguien se la ha quitado), borramos la marca local
+            if (!stillExists) {
+              clearUserReservationInfo();
+              userInfo = null; // como si no tuviera reserva
+            }
+          }
+        }
+
+        if (userInfo) {
+          // Aquí solo llegamos si la reserva guardada sigue activa
+          alert("Ya tienes una reserva activa desde este dispositivo en las últimas 24 horas. No puedes hacer más de una.");
           return;
         }
 
-        // comprobar si la franja ya está ocupada por otra clase
+        // 2) Comprobar si la franja ya está ocupada por otra clase
         const existing = getExistingReservationForSlot(date, slot);
         if (existing) {
           const reservedClass = existing.className || "otra clase";
@@ -573,7 +592,7 @@
           return;
         }
 
-        // La franja está libre → crear reserva con timestamp (ms)
+        // 3) La franja está libre → crear reserva con timestamp (ms)
         await setReservationValue(id, now);
         // guardar la reserva del usuario en localStorage (con tiempo)
         setUserReservationInfo(fullId, now);
@@ -632,7 +651,3 @@
   </script>
 </body>
 </html>
-
-
-
-
