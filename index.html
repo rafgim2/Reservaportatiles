@@ -264,6 +264,9 @@
     // ⏱ TIEMPO MÁXIMO PARA DESHACER (ms) → ahora 2 minutos
     const UNRESERVE_WINDOW_MS = 2 * 60 * 1000;
 
+    // ⏱ TIEMPO MÁXIMO DE BLOQUEO POR DISPOSITIVO (24h)
+    const USER_RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
+
     const firebaseConfig = {
       apiKey: "AIzaSyD5EAMg-0p54f8bPq8SVdZ_ePg5Xso3cmg",
       authDomain: "arm1-acbba.firebaseapp.com",
@@ -337,6 +340,11 @@
     let currentData = {};
     let unsubscribe = null;
 
+    function getCurrentDocId() {
+      const { year, month } = months[currentMonthIndex];
+      return `${year}-${String(month).padStart(2, "0")}`;
+    }
+
     function monthDocRef(monthIndex) {
       const { year, month } = months[monthIndex];
       const id = `${year}-${String(month).padStart(2, "0")}`;
@@ -373,6 +381,50 @@
       const update = {};
       update[id] = deleteField();
       await setDoc(ref, update, { merge: true });
+    }
+
+    // ➜ CONTROL POR USUARIO (máx. 1 reserva por dispositivo en 24h)
+    const LOCAL_USER_RES_KEY = "reservas_portatiles_mi_reserva";
+
+    function getUserReservationInfo() {
+      try {
+        const raw = localStorage.getItem(LOCAL_USER_RES_KEY);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !obj.fullId || !obj.time) return null;
+
+        const now = Date.now();
+        if (now - obj.time > USER_RESERVATION_TTL_MS) {
+          // Caducada → limpiamos y devolvemos null
+          localStorage.removeItem(LOCAL_USER_RES_KEY);
+          return null;
+        }
+        return obj;
+      } catch {
+        return null;
+      }
+    }
+
+    function setUserReservationInfo(fullId, time) {
+      try {
+        const obj = { fullId, time };
+        localStorage.setItem(LOCAL_USER_RES_KEY, JSON.stringify(obj));
+      } catch {
+        // si falla localStorage, simplemente no guardamos
+      }
+    }
+
+    function clearUserReservationInfo() {
+      try {
+        localStorage.removeItem(LOCAL_USER_RES_KEY);
+      } catch {
+        // ignorar
+      }
+    }
+
+    function buildFullReservationId(id) {
+      const docId = getCurrentDocId();
+      return `${docId}::${id}`;
     }
 
     // Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
@@ -496,14 +548,22 @@
     async function activarCelda(cell) {
       const { date, slot, class: className } = cell.dataset;
       const id = buildReservationId(date, slot, className);
+      const fullId = buildFullReservationId(id);
 
       const value = currentData[id];   // puede ser undefined, true o timestamp (number)
       const now   = Date.now();
 
-      // Si no hay reserva en esta celda: comprobar antes si la franja ya está ocupada
+      // Si NO hay reserva en esta celda → queremos crear una nueva
       if (!value) {
-        const existing = getExistingReservationForSlot(date, slot);
+        // comprobar si el usuario YA tiene una reserva activa en las últimas 24h
+        const userInfo = getUserReservationInfo();
+        if (userInfo) {
+          alert("Ya tienes una reserva activa desde este dispositivo en las últimas 24 horas. No puedes hacer más de una.");
+          return;
+        }
 
+        // comprobar si la franja ya está ocupada por otra clase
+        const existing = getExistingReservationForSlot(date, slot);
         if (existing) {
           const reservedClass = existing.className || "otra clase";
           alert(`No puedes reservar esta franja horaria porque ya está reservada por ${reservedClass}.`);
@@ -512,6 +572,8 @@
 
         // La franja está libre → crear reserva con timestamp (ms)
         await setReservationValue(id, now);
+        // guardar la reserva del usuario en localStorage (con tiempo)
+        setUserReservationInfo(fullId, now);
         return;
       }
 
@@ -520,6 +582,11 @@
         const elapsed = now - value;
         if (elapsed <= UNRESERVE_WINDOW_MS) {
           await clearReservation(id);
+          // si esta reserva era la del usuario, limpiamos su marca
+          const userInfo = getUserReservationInfo();
+          if (userInfo && userInfo.fullId === fullId) {
+            clearUserReservationInfo();
+          }
         } else {
           alert("Esta reserva ya no se puede modificar.");
         }
@@ -529,6 +596,10 @@
       // Compatibilidad con reservas antiguas (valor true): se permite borrar siempre
       if (value === true) {
         await clearReservation(id);
+        const userInfo = getUserReservationInfo();
+        if (userInfo && userInfo.fullId === fullId) {
+          clearUserReservationInfo();
+        }
         return;
       }
     }
@@ -558,3 +629,4 @@
   </script>
 </body>
 </html>
+
