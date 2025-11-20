@@ -558,7 +558,7 @@
         // comprobar si el usuario YA tiene una reserva activa en las últimas 24h
         const userInfo = getUserReservationInfo();
         if (userInfo) {
-          alert("Ya tienes una reserva activa desde este dispositivo en las últimas 24 horas. No puedes hacer más de una.");
+          alert("Ya tienes una reserva activa. No puedes hacer otra hasta dentro de 24 horas.");
           return;
         }
 
@@ -629,4 +629,5 @@
   </script>
 </body>
 </html>
+
 
