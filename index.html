@@ -148,24 +148,39 @@
     }
 
     /* Fecha y sesión pegadas a la izquierda (sticky) */
-    thead th:nth-child(1),
+    thead th:nth-child(1) {
+      position: sticky;
+      left: 0;
+      z-index: 11;
+      background: #e1e9f2;
+    }
+
+    thead th:nth-child(2) {
+      position: sticky;
+      left: var(--col-date-width);
+      z-index: 11;
+      background: #e1e9f2;
+    }
+
     tbody td:nth-child(1) {
       position: sticky;
       left: 0;
       z-index: 11;
-      background: #f7f7f7;
     }
 
-    thead th:nth-child(2),
     tbody td:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
       z-index: 11;
-      background: #f7f7f7;
     }
 
-    tbody tr:nth-child(odd) td {
-      background: #fafafa;
+    /* Colores por día (todas las sesiones del mismo día comparten color) */
+    tbody tr.day-a td {
+      background: #ffffff;
+    }
+
+    tbody tr.day-b td {
+      background: #f4f7ff;
     }
 
     td.reservable {
@@ -509,9 +524,15 @@
       // CUERPO (tbody)
       const tbody = document.createElement("tbody");
 
+      let useAlt = false; // alterna colores por día
+
       days.forEach(day => {
+        useAlt = !useAlt;
+        const dayClass = useAlt ? "day-a" : "day-b";
+
         slotsForMonth.forEach(slot => {
           const tr = document.createElement("tr");
+          tr.classList.add(dayClass);
 
           const tdFecha = document.createElement("td");
           tdFecha.textContent = day.label;
@@ -651,4 +672,3 @@
   </script>
 </body>
 </html>
-
