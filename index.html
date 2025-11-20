@@ -211,7 +211,7 @@
     </div>
 
     <p class="info">
-      Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
+      * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
   </main>
 
@@ -452,7 +452,7 @@
         if (elapsed <= UNRESERVE_WINDOW_MS) {
           await clearReservation(id);
         } else {
-          alert("Esta reserva ya no se puede modificar porque ha pasado el tiempo de deshacer.");
+          alert("Esta reserva ya no se puede modificar.");
         }
         return;
       }
@@ -471,4 +471,5 @@
   </script>
 </body>
 </html>
+
 
