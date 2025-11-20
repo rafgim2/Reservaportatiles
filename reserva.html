@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>RESERVA DE PORTÁTILES</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+
+    /* Barra superior (título + controles + cabecera columnas) fija */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #f5f5f5;
+    }
+
+    header {
+      background: #1f4e79;
+      color: white;
+      padding: 16px 24px 10px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 24px 6px;
+      background: #f5f5f5;
+    }
+
+    main {
+      padding: 12px 16px 24px;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    select {
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+
+    .legend {
+      font-size: 12px;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+    }
+
+    .legend-color.reserved {
+      background: #e53935;
+    }
+
+    .legend-color.free {
+      background: #ffffff;
+    }
+
+    /* Fila fija con nombres de columnas */
+    .columns-header {
+      display: flex;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+      background: #e1e9f2;
+      padding: 0 16px 0 16px;
+    }
+
+    .columns-header-inner {
+      display: flex;
+      width: 100%;
+    }
+
+    .col-header-cell {
+      flex: 1;
+      text-align: center;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-weight: 700;
+      border-right: 1px solid #ccc;
+      box-sizing: border-box;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    .col-header-cell:last-child {
+      border-right: none;
+    }
+
+    .table-container {
+      max-width: 100%;
+      overflow: auto;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 900px;
+      font-size: 12px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: center;
+      white-space: normal;
+      word-break: break-word;
+      width: 7.14%;
+    }
+
+    tbody td:nth-child(1),
+    tbody td:nth-child(2) {
+      position: sticky;
+      left: 0;
+      background: #f7f7f7;
+      z-index: 1;
+    }
+
+    tbody tr:nth-child(odd) td {
+      background: #fafafa;
+    }
+
+    td.reservable {
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    td.reservable:hover {
+      box-shadow: inset 0 0 0 2px #1f4e79;
+    }
+
+    td.reserved {
+      background: #e53935 !important;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .info {
+      font-size: 11px;
+      color: #555;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra superior fija -->
+  <div class="top-bar">
+    <header>
+      <h1>RESERVA DE PORTÁTILES</h1>
+    </header>
+
+    <div class="controls">
+      <div>
+        <label for="monthSelect">Mes:</label>
+        <select id="monthSelect"></select>
+      </div>
+      <div class="legend">
+        <span class="legend-item">
+          <span class="legend-color free"></span> Libre
+        </span>
+        <span class="legend-item">
+          <span class="legend-color reserved"></span> Reservado
+        </span>
+        <span>Haz clic o toca para reservar / liberar.</span>
+      </div>
+    </div>
+
+    <!-- Fila fija con los títulos de columnas -->
+    <div class="columns-header">
+      <div class="columns-header-inner" id="columnsHeader"></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="table-container">
+      <table id="calendarTable">
+        <!-- Sólo cuerpo, sin cabecera -->
+      </table>
+    </div>
+
+    <p class="info">
+      Las reservas se guardan en Firestore (proyecto ARM1) y se comparten para todo el claustro.
+    </p>
+  </main>
+
+  <!-- JS con Firestore -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      onSnapshot,
+      setDoc,
+      deleteField
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5EAMg-0p54f8bPq8SVdZ_ePg5Xso3cmg",
+      authDomain: "arm1-acbba.firebaseapp.com",
+      projectId: "arm1-acbba",
+      storageBucket: "arm1-acbba.firebasestorage.app",
+      messagingSenderId: "408825932019",
+      appId: "1:408825932019:web:10f2079b590b4c9ca3af86",
+      measurementId: "G-S78TM6PVRL"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const months = [
+      { year: 2025, month: 11, name: "Noviembre 2025" },
+      { year: 2025, month: 12, name: "Diciembre 2025" },
+      { year: 2026, month: 1, name: "Enero 2026" },
+      { year: 2026, month: 2, name: "Febrero 2026" },
+      { year: 2026, month: 3, name: "Marzo 2026" },
+      { year: 2026, month: 4, name: "Abril 2026" },
+      { year: 2026, month: 5, name: "Mayo 2026" },
+      { year: 2026, month: 6, name: "Junio 2026" }
+    ];
+
+    const classes = [
+      "Infantil 3 años",
+      "Infantil 4 años",
+      "Infantil 5 años",
+      "1ºA",
+      "2ºA",
+      "3ºA",
+      "4ºA",
+      "4ºB",
+      "5ºA",
+      "5ºB",
+      "6ºA",
+      "6ºB"
+    ];
+
+    // Horarios normales (nov–may)
+    const defaultSlots = [
+      "9:00-9:45",
+      "9:45-10:30",
+      "10:30-11:15",
+      "11:45-12:30",
+      "12:30-13:15",
+      "13:15-14:00"
+    ];
+
+    // Horarios especiales para JUNIO 2026
+    const juneSlots = [
+      "9:00-9:40",
+      "9:40-10:20",
+      "10:20-11:00",
+      "11:30-12:15",
+      "12:15-13:00"
+    ];
+
+    function getSlotsForMonth(monthIndex) {
+      const { year, month } = months[monthIndex];
+      if (year === 2026 && month === 6) {
+        return juneSlots;
+      }
+      return defaultSlots;
+    }
+
+    const monthSelect    = document.getElementById("monthSelect");
+    const calendarTable  = document.getElementById("calendarTable");
+    const columnsHeader  = document.getElementById("columnsHeader");
+
+    let currentMonthIndex = 0;
+    let currentData = {};
+    let unsubscribe = null;
+
+    function monthDocRef(monthIndex) {
+      const { year, month } = months[monthIndex];
+      const id = `${year}-${String(month).padStart(2, "0")}`;
+      return doc(db, "reservas_portatiles_celdas", id);
+    }
+
+    function buildReservationId(dateIso, slot, className) {
+      return `${dateIso}__${slot}__${className}`;
+    }
+
+    function subscribeToMonth(monthIndex) {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      currentMonthIndex = monthIndex;
+
+      const ref = monthDocRef(monthIndex);
+      unsubscribe = onSnapshot(ref, (snap) => {
+        currentData = snap.exists() ? snap.data() : {};
+        renderMonth(monthIndex);
+      });
+    }
+
+    async function toggleReservationInFirestore(id) {
+      const ref = monthDocRef(currentMonthIndex);
+      const update = {};
+
+      if (currentData[id]) {
+        update[id] = deleteField();
+      } else {
+        update[id] = true;
+      }
+
+      await setDoc(ref, update, { merge: true });
+    }
+
+    // Construir cabecera fija de columnas
+    function buildColumnsHeader() {
+      columnsHeader.innerHTML = "";
+      const labels = ["Fecha", "Sesión", ...classes];
+      labels.forEach(text => {
+        const div = document.createElement("div");
+        div.className = "col-header-cell";
+        div.textContent = text;
+        columnsHeader.appendChild(div);
+      });
+    }
+
+    // Selector de meses
+    months.forEach((m, index) => {
+      const opt = document.createElement("option");
+      opt.value = index;
+      opt.textContent = m.name;
+      monthSelect.appendChild(opt);
+    });
+
+    monthSelect.addEventListener("change", () => {
+      const idx = parseInt(monthSelect.value, 10);
+      subscribeToMonth(idx);
+    });
+
+    // Obtener días lectivos
+    function getWeekdays(year, month) {
+      const days = [];
+      const date = new Date(year, month - 1, 1);
+      while (date.getMonth() === month - 1) {
+        const day = date.getDay(); // 0=Dom, 1=Lun,...,6=Sab
+        if (day >= 1 && day <= 5) {
+          const d = String(date.getDate()).padStart(2, "0");
+          const m = String(month).padStart(2, "0");
+          const y = year;
+          days.push({
+            iso: `${y}-${m}-${d}`,
+            label: `${d}/${m}/${y}`
+          });
+        }
+        date.setDate(date.getDate() + 1);
+      }
+      return days;
+    }
+
+    function renderMonth(monthIndex) {
+      const { year, month } = months[monthIndex];
+      const days = getWeekdays(year, month);
+      const slotsForMonth = getSlotsForMonth(monthIndex);
+      const saved = currentData || {};
+
+      calendarTable.innerHTML = "";
+
+      const tbody = document.createElement("tbody");
+
+      days.forEach(day => {
+        slotsForMonth.forEach(slot => {
+          const tr = document.createElement("tr");
+
+          const tdFecha = document.createElement("td");
+          tdFecha.textContent = day.label;
+          tr.appendChild(tdFecha);
+
+          const tdSlot = document.createElement("td");
+          tdSlot.textContent = slot;
+          tr.appendChild(tdSlot);
+
+          classes.forEach(cls => {
+            const td = document.createElement("td");
+            td.classList.add("reservable");
+            td.dataset.date = day.iso;
+            td.dataset.slot = slot;
+            td.dataset.class = cls;
+
+            const id = buildReservationId(day.iso, slot, cls);
+            if (saved[id]) {
+              td.classList.add("reserved");
+            }
+
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+      });
+
+      calendarTable.appendChild(tbody);
+    }
+
+    calendarTable.addEventListener("click", async (event) => {
+      const cell = event.target.closest("td");
+      if (!cell || !cell.classList.contains("reservable")) return;
+
+      const { date, slot, class: className } = cell.dataset;
+      const id = buildReservationId(date, slot, className);
+
+      await toggleReservationInFirestore(id);
+    });
+
+    // Inicializar
+    buildColumnsHeader();
+    monthSelect.value = "0";
+    subscribeToMonth(0);
+  </script>
+</body>
+</html>
