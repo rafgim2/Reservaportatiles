@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RESERVA DE PORTÁTILES</title>
   <style>
     body {
@@ -341,8 +342,7 @@
       await setDoc(ref, update, { merge: true });
     }
 
-    // 🔍 NUEVA FUNCIÓN:
-    // Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
+    // 🔍 Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
     function getExistingReservationForSlot(dateIso, slot) {
       const prefix = `${dateIso}__${slot}__`;
 
@@ -454,9 +454,29 @@
       calendarTable.appendChild(tbody);
     }
 
-    // 🧠 LÓGICA DE RESERVA / LIBERACIÓN ACTUALIZADA
-    calendarTable.addEventListener("click", async (event) => {
-      const cell = event.target.closest("td");
+    // 🧠 LÓGICA DE RESERVA / LIBERACIÓN CON SOPORTE TÁCTIL PRECISO
+    let lastTouchTime = 0;
+
+    function handleCellInteraction(event) {
+      let cell = null;
+
+      if (event.type === "touchstart") {
+        lastTouchTime = Date.now();
+        if (event.touches && event.touches.length > 0) {
+          const t = event.touches[0];
+          const realTarget = document.elementFromPoint(t.clientX, t.clientY);
+          cell = realTarget && realTarget.closest("td");
+        }
+        // Evitamos que además dispare el click fantasma
+        event.preventDefault();
+      } else if (event.type === "click") {
+        // Si el click viene justo después de un touch, lo ignoramos
+        if (Date.now() - lastTouchTime < 500) {
+          return;
+        }
+        cell = event.target.closest("td");
+      }
+
       if (!cell || !cell.classList.contains("reservable")) return;
 
       const { date, slot, class: className } = cell.dataset;
@@ -476,7 +496,7 @@
         }
 
         // La franja está libre → crear reserva con timestamp (ms)
-        await setReservationValue(id, now);
+        setReservationValue(id, now);
         return;
       }
 
@@ -484,7 +504,7 @@
       if (typeof value === "number") {
         const elapsed = now - value;
         if (elapsed <= UNRESERVE_WINDOW_MS) {
-          await clearReservation(id);
+          clearReservation(id);
         } else {
           alert("Esta reserva ya no se puede modificar.");
         }
@@ -493,10 +513,13 @@
 
       // Compatibilidad con reservas antiguas (valor true): se permite borrar siempre
       if (value === true) {
-        await clearReservation(id);
+        clearReservation(id);
         return;
       }
-    });
+    }
+
+    calendarTable.addEventListener("click", handleCellInteraction);
+    calendarTable.addEventListener("touchstart", handleCellInteraction, { passive: false });
 
     // Inicializar
     buildColumnsHeader();
@@ -505,3 +528,4 @@
   </script>
 </body>
 </html>
+
