@@ -85,8 +85,13 @@
       background: #e53935;
     }
 
-    .legend-color.free {
-      background: #ffffff;
+    /* Cuadradito que representa libre: mitad blanco, mitad azul cebra */
+    .legend-color.free-mixed {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+      background: linear-gradient(90deg, #ffffff 50%, #dde3ff 50%);
     }
 
     .table-container {
@@ -255,7 +260,7 @@
       </div>
       <div class="legend">
         <span class="legend-item">
-          <span class="legend-color free"></span> Libre
+          <span class="legend-color free-mixed"></span> Libre
         </span>
         <span class="legend-item">
           <span class="legend-color reserved"></span> Reservado
@@ -381,7 +386,7 @@
 
     function isFixedReservation(dateIso, slot, className) {
       const d = new Date(dateIso);
-      const weekday = d.getDay(); // 1=lunes … 5=viernes
+      const weekday = d.getDay(); // 0=Dom,1=Lun,…,5=Vie
       if (weekday < 1 || weekday > 5) return false;
 
       const slotsForMonth = getSlotsForMonth(currentMonthIndex);
@@ -616,19 +621,28 @@
       subscribeToMonth(idx);
     });
 
-    // Obtener días lectivos
+    // Obtener días lectivos (con inicial del día: L, M, X, J, V)
     function getWeekdays(year, month) {
       const days = [];
       const date = new Date(year, month - 1, 1);
+      const initials = {
+        1: "L",
+        2: "M",
+        3: "X",
+        4: "J",
+        5: "V"
+      };
+
       while (date.getMonth() === month - 1) {
         const day = date.getDay(); // 0=Dom, 1=Lun,...,6=Sab
         if (day >= 1 && day <= 5) {
           const d = String(date.getDate()).padStart(2, "0");
           const m = String(month).padStart(2, "0");
           const y = year;
+          const initial = initials[day] || "";
           days.push({
             iso: `${y}-${m}-${d}`,
-            label: `${d}/${m}/${y}`
+            label: `${initial} ${d}/${m}/${y}`
           });
         }
         date.setDate(date.getDate() + 1);
