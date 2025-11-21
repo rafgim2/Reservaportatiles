@@ -6,7 +6,6 @@
   <title>RESERVA DE PORTÁTILES</title>
   <style>
     :root {
-      /* Anchos fijos para las columnas pegadas */
       --col-date-width: 110px;
       --col-session-width: 90px;
     }
@@ -18,7 +17,6 @@
       background: #f5f5f5;
     }
 
-    /* Barra superior (título + controles) fija */
     .top-bar {
       position: sticky;
       top: 0;
@@ -132,7 +130,6 @@
       word-break: break-word;
     }
 
-    /* Anchos concretos para fecha y sesión */
     thead th:nth-child(1),
     tbody td:nth-child(1) {
       width: var(--col-date-width);
@@ -147,7 +144,6 @@
       max-width: var(--col-session-width);
     }
 
-    /* Fecha y sesión pegadas a la izquierda (sticky) */
     thead th:nth-child(1) {
       position: sticky;
       left: 0;
@@ -166,15 +162,16 @@
       position: sticky;
       left: 0;
       z-index: 11;
+      background: #fff;
     }
 
     tbody td:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
       z-index: 11;
+      background: #fff;
     }
 
-    /* Colores por día (todas las sesiones del mismo día comparten color) */
     tbody tr.day-a td {
       background: #ffffff;
     }
@@ -186,7 +183,7 @@
     td.reservable {
       cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease;
-      position: relative; /* para la marca de agua */
+      position: relative;
       overflow: hidden;
     }
 
@@ -200,7 +197,14 @@
       font-weight: 700;
     }
 
-    /* Marca de agua con el nombre de la clase en cada celda de clase */
+    /* Reservas fijas del horario (no clicables) */
+    td.fixed-reserved {
+      background: #b71c1c !important;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: default;
+    }
+
     td.reservable::before {
       content: attr(data-class);
       position: absolute;
@@ -217,9 +221,12 @@
       line-height: 1.2;
     }
 
-    /* Cuando está reservada, la marca de agua más clarita sobre rojo */
     td.reserved::before {
       color: rgba(255, 255, 255, 0.6);
+    }
+
+    td.fixed-reserved::before {
+      color: rgba(255, 255, 255, 0.7);
     }
 
     .info {
@@ -326,15 +333,15 @@
 
     // Horarios normales (nov–may)
     const defaultSlots = [
-      "9:00-9:45",
-      "9:45-10:30",
-      "10:30-11:15",
-      "11:45-12:30",
-      "12:30-13:15",
-      "13:15-14:00"
+      "9:00-9:45",   // 1ª
+      "9:45-10:30",  // 2ª
+      "10:30-11:15", // 3ª
+      "11:45-12:30", // 4ª
+      "12:30-13:15", // 5ª
+      "13:15-14:00"  // 6ª
     ];
 
-    // Horarios especiales para JUNIO 2026
+    // Horarios especiales para JUNIO 2026 (solo 5 sesiones)
     const juneSlots = [
       "9:00-9:40",
       "9:40-10:20",
@@ -346,9 +353,57 @@
     function getSlotsForMonth(monthIndex) {
       const { year, month } = months[monthIndex];
       if (year === 2026 && month === 6) {
+        // En junio solo hay 5 sesiones, así que las reservas de la 6ª hora
+        // del horario fijo se ignoran automáticamente.
         return juneSlots;
       }
       return defaultSlots;
+    }
+
+    /* === RESERVAS FIJAS SEGÚN LA FOTO DEL HORARIO ===
+       weekday: 1=Lunes ... 5=Viernes
+       session: 1=1ª, 2=2ª,... 6=6ª
+    */
+    const FIXED_WEEKLY_RESERVATIONS = [
+      { weekday: 5, session: 1, className: "3ºA" }, // 1ª Viernes 3A
+      { weekday: 4, session: 4, className: "5ºA" }, // 4ª Jueves 5A
+      { weekday: 5, session: 4, className: "1ºA" }, // 4ª Viernes 1A
+      { weekday: 4, session: 5, className: "4ºA" }, // 5ª Jueves 4A
+      { weekday: 3, session: 6, className: "6ºB" }, // 6ª Miércoles 6B
+      { weekday: 4, session: 6, className: "6ºA" }, // 6ª Jueves 6A
+      { weekday: 5, session: 6, className: "5ºB" }  // 6ª Viernes 5B
+    ];
+
+    function isFixedReservation(dateIso, slot, className) {
+      const d = new Date(dateIso);
+      const weekday = d.getDay(); // 1=lunes … 5=viernes
+      if (weekday < 1 || weekday > 5) return false;
+
+      const slotsForMonth = getSlotsForMonth(currentMonthIndex);
+      const idx = slotsForMonth.indexOf(slot);
+      if (idx === -1) return false;
+      const session = idx + 1;
+
+      return FIXED_WEEKLY_RESERVATIONS.some(
+        r => r.weekday === weekday && r.session === session && r.className === className
+      );
+    }
+
+    // Devuelve si una franja (fecha+slot) está ocupada por una reserva fija, aunque sea otra clase
+    function getFixedReservationForSlot(dateIso, slot) {
+      const d = new Date(dateIso);
+      const weekday = d.getDay();
+      if (weekday < 1 || weekday > 5) return null;
+
+      const slotsForMonth = getSlotsForMonth(currentMonthIndex);
+      const idx = slotsForMonth.indexOf(slot);
+      if (idx === -1) return null;
+      const session = idx + 1;
+
+      const r = FIXED_WEEKLY_RESERVATIONS.find(
+        x => x.weekday === weekday && x.session === session
+      );
+      return r || null;
     }
 
     const monthSelect    = document.getElementById("monthSelect");
@@ -465,6 +520,17 @@
           }
         }
       }
+
+      // Si no hay en Firestore, miramos si la franja está ocupada por una reserva fija
+      const fixed = getFixedReservationForSlot(dateIso, slot);
+      if (fixed) {
+        return {
+          id: null,
+          className: fixed.className,
+          value: "fixed"
+        };
+      }
+
       return null;
     }
 
@@ -550,7 +616,13 @@
             td.dataset.class = cls; // usado para la marca de agua
 
             const id = buildReservationId(day.iso, slot, cls);
-            if (saved[id]) {
+            const isFixed = isFixedReservation(day.iso, slot, cls);
+
+            if (isFixed) {
+              // reserva fija del horario → siempre ocupada y no clicable
+              td.classList.add("fixed-reserved");
+              td.dataset.fixed = "true";
+            } else if (saved[id]) {
               td.classList.add("reserved");
             }
 
@@ -570,6 +642,12 @@
     let lastClickTime = 0;
 
     async function activarCelda(cell) {
+      // Si es una reserva fija del horario, no hacemos nada
+      if (cell.dataset.fixed === "true") {
+        alert("Esta franja horaria está reservada de forma fija en el horario y no se puede modificar.");
+        return;
+      }
+
       const { date, slot, class: className } = cell.dataset;
       const id = buildReservationId(date, slot, className);
       const fullId = buildFullReservationId(id);
@@ -605,7 +683,7 @@
           return;
         }
 
-        // 2) Comprobar si la franja ya está ocupada por otra clase
+        // 2) Comprobar si la franja ya está ocupada por otra clase o por una reserva fija
         const existing = getExistingReservationForSlot(date, slot);
         if (existing) {
           const reservedClass = existing.className || "otra clase";
@@ -672,6 +750,3 @@
   </script>
 </body>
 </html>
-
-
-
