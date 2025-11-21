@@ -274,7 +274,7 @@
       * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
     <p class="info">
-      * En cada periodo de 24 horas solo se puede realizar una reserva por semana.
+      
     </p>
   </main>
 
@@ -764,11 +764,7 @@
           }
         }
 
-        if (userInfo) {
-          // Aquí solo llegamos si la reserva guardada para esa semana sigue activa
-          alert("Ya tienes una reserva activa esta semana en las últimas 24 horas.");
-          return;
-        }
+        
 
         // 2) Comprobar si la franja ya está ocupada por otra clase o por una reserva fija
         const existing = getExistingReservationForSlot(date, slot);
@@ -833,3 +829,4 @@
   </script>
 </body>
 </html>
+
