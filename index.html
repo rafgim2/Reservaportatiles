@@ -180,6 +180,11 @@
       background: #dde3ff;
     }
 
+    /* Fila con alguna reserva (fondo rojo clarito) */
+    tbody tr.row-has-reservation td {
+      background: #ffebee;
+    }
+
     td.reservable {
       cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease;
@@ -672,6 +677,9 @@
           tdSlot.textContent = slot;
           tr.appendChild(tdSlot);
 
+          // Para saber si esta franja (fila) tiene alguna reserva
+          let rowHasReservation = false;
+
           classes.forEach(cls => {
             const td = document.createElement("td");
             td.classList.add("reservable");
@@ -686,12 +694,19 @@
               // reserva fija del horario → siempre ocupada y no clicable
               td.classList.add("fixed-reserved");
               td.dataset.fixed = "true";
+              rowHasReservation = true;
             } else if (saved[id]) {
               td.classList.add("reserved");
+              rowHasReservation = true;
             }
 
             tr.appendChild(td);
           });
+
+          // Si alguna celda de esta franja está reservada, coloreamos toda la fila
+          if (rowHasReservation) {
+            tr.classList.add("row-has-reservation");
+          }
 
           tbody.appendChild(tr);
         });
@@ -812,4 +827,3 @@
   </script>
 </body>
 </html>
-
