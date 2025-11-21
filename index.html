@@ -81,17 +81,12 @@
       border: 1px solid #aaa;
     }
 
-    .legend-color.reserved {
-      background: #e53935;
+    .legend-color.free {
+      background: #ffffff;
     }
 
-    /* Cuadradito que representa libre: mitad blanco, mitad azul cebra */
-    .legend-color.free-mixed {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
-      border: 1px solid #aaa;
-      background: linear-gradient(90deg, #ffffff 50%, #dde3ff 50%);
+    .legend-color.reserved {
+      background: #e53935;
     }
 
     .table-container {
@@ -133,6 +128,7 @@
       text-align: center;
       white-space: normal;
       word-break: break-word;
+      background: #ffffff; /* Todo libre en blanco por defecto */
     }
 
     thead th:nth-child(1),
@@ -177,12 +173,9 @@
       background: #fff;
     }
 
-    tbody tr.day-a td {
-      background: #ffffff;
-    }
-
-    tbody tr.day-b td {
-      background: #dde3ff;
+    /* Separador grueso entre días (primera fila de cada día) */
+    tbody tr.first-slot-of-day td {
+      border-top-width: 3px;
     }
 
     /* Fila con alguna reserva (fondo rojo clarito) */
@@ -260,7 +253,7 @@
       </div>
       <div class="legend">
         <span class="legend-item">
-          <span class="legend-color free-mixed"></span> Libre
+          <span class="legend-color free"></span> Libre
         </span>
         <span class="legend-item">
           <span class="legend-color reserved"></span> Reservado
@@ -673,15 +666,14 @@
       // CUERPO (tbody)
       const tbody = document.createElement("tbody");
 
-      let useAlt = false; // alterna colores por día
-
       days.forEach(day => {
-        useAlt = !useAlt;
-        const dayClass = useAlt ? "day-a" : "day-b";
-
-        slotsForMonth.forEach(slot => {
+        slotsForMonth.forEach((slot, slotIndex) => {
           const tr = document.createElement("tr");
-          tr.classList.add(dayClass);
+
+          // Primera franja del día → separador grueso
+          if (slotIndex === 0) {
+            tr.classList.add("first-slot-of-day");
+          }
 
           const tdFecha = document.createElement("td");
           tdFecha.textContent = day.label;
