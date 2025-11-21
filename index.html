@@ -271,7 +271,7 @@
       * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
     <p class="info">
-      * Solo se puede realizar una reserva cada 24 horas.
+      * En cada periodo de 24 horas solo se puede realizar una reserva por semana (máximo 1 reserva por semana natural en ese intervalo).
     </p>
   </main>
 
@@ -456,42 +456,106 @@
       await setDoc(ref, update, { merge: true });
     }
 
-    // ➜ CONTROL POR USUARIO (máx. 1 reserva por dispositivo en 24h)
-    const LOCAL_USER_RES_KEY = "reservas_portatiles_mi_reserva";
+    // ➜ CONTROL POR USUARIO:
+    // Máx. 1 reserva POR SEMANA (semana ISO) en las últimas 24h
+    // Se guardan en localStorage por semana: { "2025-W45": { fullId, time }, ... }
+    const LOCAL_USER_RES_KEY = "reservas_portatiles_mis_reservas_por_semana";
 
-    function getUserReservationInfo() {
+    // Calcula la semana ISO (año-semana) a partir de una fecha YYYY-MM-DD
+    function getWeekKeyFromIso(dateIso) {
+      const [year, month, day] = dateIso.split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      const { isoYear, week } = getISOYearWeek(date);
+      return `${isoYear}-W${String(week).padStart(2, "0")}`;
+    }
+
+    // Devuelve { isoYear, week } usando semanas ISO (lunes-domingo)
+    function getISOYearWeek(date) {
+      const tmp = new Date(date.valueOf());
+      // Día de la semana con lunes = 0
+      const dayNr = (tmp.getDay() + 6) % 7;
+      // Colocamos la fecha en el jueves de esa semana
+      tmp.setDate(tmp.getDate() - dayNr + 3);
+
+      const isoYear = tmp.getFullYear();
+
+      // Jueves de la primera semana del año ISO
+      const jan4 = new Date(isoYear, 0, 4);
+      const jan4Day = (jan4.getDay() + 6) % 7;
+      jan4.setDate(jan4.getDate() - jan4Day + 3);
+
+      const week = 1 + Math.round((tmp - jan4) / 604800000); // 604800000 = ms en una semana
+      return { isoYear, week };
+    }
+
+    // Lee el mapa de reservas por semana del usuario desde localStorage
+    function getUserReservationsMap() {
       try {
         const raw = localStorage.getItem(LOCAL_USER_RES_KEY);
-        if (!raw) return null;
+        if (!raw) return {};
         const obj = JSON.parse(raw);
-        if (!obj || !obj.fullId || !obj.time) return null;
-
-        const now = Date.now();
-        if (now - obj.time > USER_RESERVATION_TTL_MS) {
-          // Caducada → limpiamos y devolvemos null
-          localStorage.removeItem(LOCAL_USER_RES_KEY);
-          return null;
-        }
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
         return obj;
       } catch {
-        return null;
+        return {};
       }
     }
 
-    function setUserReservationInfo(fullId, time) {
+    // Guarda el mapa de reservas por semana
+    function saveUserReservationsMap(map) {
       try {
-        const obj = { fullId, time };
-        localStorage.setItem(LOCAL_USER_RES_KEY, JSON.stringify(obj));
+        localStorage.setItem(LOCAL_USER_RES_KEY, JSON.stringify(map));
       } catch {
-        // si falla localStorage, simplemente no guardamos
+        // si falla localStorage, no pasa nada
       }
     }
 
-    function clearUserReservationInfo() {
-      try {
-        localStorage.removeItem(LOCAL_USER_RES_KEY);
-      } catch {
-        // ignorar
+    // Devuelve la reserva (si existe y no ha caducado) para una semana concreta
+    function getUserReservationInfoForWeek(weekKey) {
+      const map = getUserReservationsMap();
+      const now = Date.now();
+      let changed = false;
+
+      // Limpiamos reservas caducadas (> 24h)
+      for (const wk in map) {
+        const info = map[wk];
+        if (!info || typeof info.time !== "number") {
+          delete map[wk];
+          changed = true;
+          continue;
+        }
+        if (now - info.time > USER_RESERVATION_TTL_MS) {
+          delete map[wk];
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        saveUserReservationsMap(map);
+      }
+
+      return map[weekKey] || null;
+    }
+
+    // Añade/actualiza la reserva de una semana
+    function addUserReservationForWeek(weekKey, fullId, time) {
+      const map = getUserReservationsMap();
+      map[weekKey] = { fullId, time };
+      saveUserReservationsMap(map);
+    }
+
+    // Elimina del mapa cualquier reserva que tenga ese fullId
+    function removeUserReservationByFullId(fullId) {
+      const map = getUserReservationsMap();
+      let changed = false;
+      for (const wk in map) {
+        if (map[wk] && map[wk].fullId === fullId) {
+          delete map[wk];
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveUserReservationsMap(map);
       }
     }
 
@@ -657,8 +721,10 @@
 
       // Si NO hay reserva en esta celda → queremos crear una nueva
       if (!value) {
-        // 1) Comprobar si el usuario YA tiene una reserva activa en las últimas 24h
-        let userInfo = getUserReservationInfo();
+        // 1) Comprobar si el usuario YA tiene una reserva activa
+        // en esta MISMA semana (ISO) en las últimas 24h
+        const weekKey = getWeekKeyFromIso(date);
+        let userInfo = getUserReservationInfoForWeek(weekKey);
 
         if (userInfo) {
           // Desglosamos la reserva guardada: docId::resId
@@ -669,17 +735,17 @@
           if (docId === getCurrentDocId()) {
             const stillExists = currentData && currentData[resId];
 
-            // Si ya no existe (alguien se la ha quitado), borramos la marca local
+            // Si ya no existe (alguien se la ha quitado), borramos la marca local de esa semana
             if (!stillExists) {
-              clearUserReservationInfo();
-              userInfo = null; // como si no tuviera reserva
+              removeUserReservationByFullId(userInfo.fullId);
+              userInfo = null; // como si no tuviera reserva esa semana
             }
           }
         }
 
         if (userInfo) {
-          // Aquí solo llegamos si la reserva guardada sigue activa
-          alert("Ya tienes una reserva activa en las últimas 24 horas.");
+          // Aquí solo llegamos si la reserva guardada para esa semana sigue activa
+          alert("Ya tienes una reserva activa esta semana en las últimas 24 horas.");
           return;
         }
 
@@ -693,8 +759,10 @@
 
         // 3) La franja está libre → crear reserva con timestamp (ms)
         await setReservationValue(id, now);
-        // guardar la reserva del usuario en localStorage (con tiempo)
-        setUserReservationInfo(fullId, now);
+
+        // guardar la reserva del usuario en localStorage para ESA semana
+        const newWeekKey = getWeekKeyFromIso(date);
+        addUserReservationForWeek(newWeekKey, fullId, now);
         return;
       }
 
@@ -703,11 +771,8 @@
         const elapsed = now - value;
         if (elapsed <= UNRESERVE_WINDOW_MS) {
           await clearReservation(id);
-          // si esta reserva era la del usuario, limpiamos su marca
-          const userInfo = getUserReservationInfo();
-          if (userInfo && userInfo.fullId === fullId) {
-            clearUserReservationInfo();
-          }
+          // si esta reserva era alguna de las guardadas del usuario, la eliminamos del mapa
+          removeUserReservationByFullId(fullId);
         } else {
           alert("Esta reserva ya no se puede modificar.");
         }
@@ -717,10 +782,7 @@
       // Compatibilidad con reservas antiguas (valor true): se permite borrar siempre
       if (value === true) {
         await clearReservation(id);
-        const userInfo = getUserReservationInfo();
-        if (userInfo && userInfo.fullId === fullId) {
-          clearUserReservationInfo();
-        }
+        removeUserReservationByFullId(fullId);
         return;
       }
     }
