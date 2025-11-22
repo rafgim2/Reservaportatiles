@@ -95,6 +95,7 @@
       border: 1px solid #ccc;
       background: white;
       border-radius: 4px;
+      max-height: 80vh;
     }
 
     table {
@@ -230,6 +231,13 @@
 
     td.fixed-reserved::before {
       color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Celda de fecha del día actual (barra verde como en la imagen) */
+    .today-date-cell {
+      background: #c8e6c9 !important;
+      border-left: 8px solid #2e7d32;
+      font-weight: 700;
     }
 
     .info {
@@ -411,10 +419,14 @@
 
     const monthSelect    = document.getElementById("monthSelect");
     const calendarTable  = document.getElementById("calendarTable");
+    const tableContainer = document.querySelector(".table-container");
 
     let currentMonthIndex = 0;
     let currentData = {};
     let unsubscribe = null;
+
+    // Para que solo auto-centre el mes de "hoy" la primera vez
+    const autoScrolledMonths = {};
 
     function getCurrentDocId() {
       const { year, month } = months[currentMonthIndex];
@@ -601,6 +613,15 @@
       return null;
     }
 
+    // Devuelve la fecha de hoy en formato YYYY-MM-DD (hora local)
+    function getTodayIso() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
     // Selector de meses
     months.forEach((m, index) => {
       const opt = document.createElement("option");
@@ -648,6 +669,7 @@
       const days = getWeekdays(year, month);
       const slotsForMonth = getSlotsForMonth(monthIndex);
       const saved = currentData || {};
+      const todayIso = getTodayIso();
 
       calendarTable.innerHTML = "";
 
@@ -666,7 +688,12 @@
       // CUERPO (tbody)
       const tbody = document.createElement("tbody");
 
+      // Fila que usaremos como "ancla" para centrar el día de hoy
+      let todayAnchorRow = null;
+
       days.forEach(day => {
+        const isToday = (day.iso === todayIso);
+
         slotsForMonth.forEach((slot, slotIndex) => {
           const tr = document.createElement("tr");
 
@@ -677,6 +704,9 @@
 
           const tdFecha = document.createElement("td");
           tdFecha.textContent = day.label;
+          if (isToday) {
+            tdFecha.classList.add("today-date-cell");
+          }
           tr.appendChild(tdFecha);
 
           const tdSlot = document.createElement("td");
@@ -714,11 +744,28 @@
             tr.classList.add("row-has-reservation");
           }
 
+          // Guardamos la primera fila del día de hoy para centrarla
+          if (isToday && slotIndex === 0) {
+            todayAnchorRow = tr;
+          }
+
           tbody.appendChild(tr);
         });
       });
 
       calendarTable.appendChild(tbody);
+
+      // Centrar automáticamente el día de hoy en pantalla (solo 1ª vez por mes)
+      if (todayAnchorRow && tableContainer) {
+        const docId = `${year}-${String(month).padStart(2, "0")}`;
+        if (!autoScrolledMonths[docId]) {
+          const rowOffset = todayAnchorRow.offsetTop;
+          const rowHeight = todayAnchorRow.offsetHeight;
+          const targetScrollTop = rowOffset - (tableContainer.clientHeight / 2 - rowHeight / 2);
+          tableContainer.scrollTop = Math.max(targetScrollTop, 0);
+          autoScrolledMonths[docId] = true;
+        }
+      }
     }
 
     // 🧠 LÓGICA DE RESERVA / LIBERACIÓN CON DOBLE CLIC / DOBLE TOQUE
@@ -742,6 +789,13 @@
 
       // Si NO hay reserva en esta celda → queremos crear una nueva
       if (!value) {
+        // ✅ NO permitir nuevas reservas en días ya pasados
+        const todayIso = getTodayIso();
+        if (date < todayIso) {
+          alert("No se pueden hacer nuevas reservas en días que ya han pasado.");
+          return;
+        }
+
         // 1) Comprobar si el usuario YA tiene una reserva activa
         // en esta MISMA semana (ISO) en las últimas 24h
         const weekKey = getWeekKeyFromIso(date);
@@ -763,8 +817,6 @@
             }
           }
         }
-
-        
 
         // 2) Comprobar si la franja ya está ocupada por otra clase o por una reserva fija
         const existing = getExistingReservationForSlot(date, slot);
@@ -829,4 +881,3 @@
   </script>
 </body>
 </html>
-
