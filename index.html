@@ -91,7 +91,7 @@
 
     .table-container {
       max-width: 100%;
-      overflow: auto;
+      overflow: auto;        /* scroll horizontal y vertical */
       border: 1px solid #ccc;
       background: white;
       border-radius: 4px;
@@ -110,18 +110,7 @@
       background: #e1e9f2;
     }
 
-    thead th {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: #dde3ff;
-      border: 1px solid #ccc;
-      padding: 4px 6px;
-      text-align: center;
-      white-space: normal;
-      word-break: break-word;
-    }
-
+    /* Bordes y fondo por defecto de TODAS las celdas */
     th,
     td {
       border: 1px solid #ccc;
@@ -132,6 +121,15 @@
       background: #ffffff; /* Todo libre en blanco por defecto */
     }
 
+    /* Cabecera fija arriba (todas las columnas) */
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #dde3ff;
+    }
+
+    /* Ancho fijo para columnas Fecha y Sesión */
     thead th:nth-child(1),
     tbody td:nth-child(1) {
       width: var(--col-date-width);
@@ -146,31 +144,34 @@
       max-width: var(--col-session-width);
     }
 
+    /* Primera columna (Fecha) fija a la izquierda */
     thead th:nth-child(1) {
       position: sticky;
       left: 0;
-      z-index: 11;
+      z-index: 20;
       background: #dde3ff;
     }
 
+    /* Segunda columna (Sesión) fija detrás de la de Fecha */
     thead th:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
-      z-index: 11;
+      z-index: 20;
       background: #dde3ff;
     }
 
+    /* Celdas de cuerpo: Fecha y Sesión fijas a la izquierda al hacer scroll horizontal */
     tbody td:nth-child(1) {
       position: sticky;
       left: 0;
-      z-index: 11;
+      z-index: 15;
       background: #fff;
     }
 
     tbody td:nth-child(2) {
       position: sticky;
       left: var(--col-date-width);
-      z-index: 11;
+      z-index: 15;
       background: #fff;
     }
 
@@ -233,7 +234,7 @@
       color: rgba(255, 255, 255, 0.7);
     }
 
-    /* Celda de fecha del día actual (barra verde como en la imagen) */
+    /* Celda de fecha del día actual (barra verde) */
     .today-date-cell {
       background: #c8e6c9 !important;
       border-left: 8px solid #2e7d32;
@@ -881,4 +882,3 @@
   </script>
 </body>
 </html>
-
