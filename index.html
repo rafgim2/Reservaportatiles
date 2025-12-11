@@ -74,7 +74,7 @@
       gap: 4px;
     }
 
-    .legend-color {
+        .legend-color {
       width: 16px;
       height: 16px;
       border-radius: 4px;
@@ -85,9 +85,14 @@
       background: #ffffff;
     }
 
-    .legend-color.reserved {
-      background: #e53935;
+    .legend-color.partial {
+      background: #e8f5e9; /* reservas parciales: aún quedan portátiles */
     }
+
+    .legend-color.reserved {
+      background: #e53935; /* franja completa, sin portátiles */
+    }
+
 
     .table-container {
       max-width: 100%;
@@ -281,15 +286,19 @@
         <label for="monthSelect">Mes:</label>
         <select id="monthSelect"></select>
       </div>
-      <div class="legend">
+            <div class="legend">
         <span class="legend-item">
           <span class="legend-color free"></span> Libre
         </span>
         <span class="legend-item">
-          <span class="legend-color reserved"></span> Reservado
+          <span class="legend-color partial"></span> Reservado (quedan portátiles)
+        </span>
+        <span class="legend-item">
+          <span class="legend-color reserved"></span> Sin portátiles disponibles
         </span>
         <span>Haz doble clic o doble toque para reservar / liberar.</span>
       </div>
+
     </div>
   </div>
 
@@ -984,3 +993,4 @@
   </script>
 </body>
 </html>
+
