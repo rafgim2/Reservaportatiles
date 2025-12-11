@@ -144,6 +144,14 @@
       max-width: var(--col-session-width);
     }
 
+    /* Nueva columna: portátiles disponibles (3ª) */
+    thead th:nth-child(3),
+    tbody td:nth-child(3) {
+      width: 110px;
+      min-width: 110px;
+      max-width: 110px;
+    }
+
     /* Primera columna (Fecha) fija a la izquierda */
     thead th:nth-child(1) {
       position: sticky;
@@ -180,9 +188,16 @@
       border-top-width: 3px;
     }
 
-    /* Fila con alguna reserva (fondo rojo clarito) */
-    tbody tr.row-has-reservation td {
-      background: #ffebee;
+    /* NUEVO:
+       - row-partial-reservation → hay reservas pero aún quedan portátiles (verde suave)
+       - row-full-reservation    → franja completa, 0 disponibles (rojo suave)
+    */
+    tbody tr.row-partial-reservation td {
+      background: #e8f5e9; /* verde muy suave */
+    }
+
+    tbody tr.row-full-reservation td {
+      background: #ffebee; /* rojo suave (como antes) */
     }
 
     td.reservable {
@@ -226,12 +241,18 @@
       line-height: 1.2;
     }
 
+    /* Cuando está reservada, mostramos también la cantidad: "4ºA (10)" */
     td.reserved::before {
-      color: rgba(255, 255, 255, 0.6);
+      content: attr(data-class) " (" attr(data-count) ")";
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 700;
     }
 
+    /* Reservas fijas → siempre se muestra "(25)" */
     td.fixed-reserved::before {
+      content: attr(data-class) " (25)";
       color: rgba(255, 255, 255, 0.7);
+      font-weight: 700;
     }
 
     /* Celda de fecha del día actual (barra verde) */
@@ -283,7 +304,7 @@
       * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
     <p class="info">
-      
+
     </p>
   </main>
 
@@ -342,6 +363,9 @@
       "6ºA",
       "6ºB"
     ];
+
+    // Nº total de portátiles del carro
+    const MAX_LAPTOPS = 25;
 
     // Horarios normales (nov–may)
     const defaultSlots = [
@@ -416,6 +440,72 @@
         x => x.weekday === weekday && x.session === session
       );
       return r || null;
+    }
+
+    // Normaliza los distintos formatos de reserva a { time, count }
+    // (compatibilidad con valores antiguos: true o number)
+    function parseReservationValue(val) {
+      if (!val) return null;
+
+      if (typeof val === "object") {
+        const t = typeof val.time === "number" ? val.time : null;
+        const c = typeof val.count === "number" ? val.count : 1;
+        return { time: t, count: c };
+      }
+
+      if (typeof val === "number") {
+        return { time: val, count: 1 };
+      }
+
+      if (val === true) {
+        return { time: null, count: 1 };
+      }
+
+      return null;
+    }
+
+    // Devuelve cuántos portátiles hay reservados en una franja (fecha + slot)
+    function getReservedCountForSlot(dateIso, slot) {
+      // Si hay reserva fija de horario, consideramos que ocupa todos los portátiles
+      const fixed = getFixedReservationForSlot(dateIso, slot);
+      if (fixed) return MAX_LAPTOPS;
+
+      const prefix = `${dateIso}__${slot}__`;
+      let total = 0;
+
+      for (const key in currentData) {
+        const val = currentData[key];
+        const info = parseReservationValue(val);
+        if (!info) continue;
+        if (key.startsWith(prefix)) {
+          const n = info.count && info.count > 0 ? info.count : 1;
+          total += n;
+        }
+      }
+
+      return total;
+    }
+
+    // Devuelve { reserved, remaining } para una franja
+    function getAvailabilityForSlot(dateIso, slot) {
+      const reserved = getReservedCountForSlot(dateIso, slot);
+      const remaining = Math.max(MAX_LAPTOPS - reserved, 0);
+      return { reserved, remaining };
+    }
+
+    // Pide al usuario cuántos portátiles quiere reservar para esa franja
+    function pedirCantidadPortatiles(max, valorPorDefecto = 1) {
+      const mensaje = `¿Cuántos portátiles quieres reservar? (1–${max})`;
+      const respuesta = prompt(mensaje, String(valorPorDefecto));
+      if (respuesta === null) return null; // cancelado
+
+      const n = parseInt(respuesta, 10);
+      if (!Number.isFinite(n) || n < 1 || n > max) {
+        alert(`Introduce un número entre 1 y ${max}.`);
+        return null;
+      }
+
+      return n;
     }
 
     const monthSelect    = document.getElementById("monthSelect");
@@ -580,40 +670,6 @@
       return `${docId}::${id}`;
     }
 
-    // Devuelve la reserva (si existe) para una fecha + franja, sin importar la clase
-    function getExistingReservationForSlot(dateIso, slot) {
-      const prefix = `${dateIso}__${slot}__`;
-
-      for (const key in currentData) {
-        const value = currentData[key];
-        if (!value) continue; // sin reserva
-
-        if (typeof value === "number" || value === true) {
-          if (key.startsWith(prefix)) {
-            const parts = key.split("__");
-            const cls   = parts[2] || "";
-            return {
-              id: key,
-              className: cls,
-              value
-            };
-          }
-        }
-      }
-
-      // Si no hay en Firestore, miramos si la franja está ocupada por una reserva fija
-      const fixed = getFixedReservationForSlot(dateIso, slot);
-      if (fixed) {
-        return {
-          id: null,
-          className: fixed.className,
-          value: "fixed"
-        };
-      }
-
-      return null;
-    }
-
     // Devuelve la fecha de hoy en formato YYYY-MM-DD (hora local)
     function getTodayIso() {
       const now = new Date();
@@ -688,7 +744,7 @@
       // CABECERA (thead)
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
-      const labels = ["Fecha", "Sesión", ...classes];
+      const labels = ["Fecha", "Sesión", "Portátiles disp.", ...classes];
       labels.forEach(text => {
         const th = document.createElement("th");
         th.textContent = text;
@@ -725,8 +781,22 @@
           tdSlot.textContent = slot;
           tr.appendChild(tdSlot);
 
-          // Para saber si esta franja (fila) tiene alguna reserva
-          let rowHasReservation = false;
+          // Cálculo de reservas / disponibles en la franja
+          let reservedInSlot = getReservedCountForSlot(day.iso, slot);
+          let availableInSlot = Math.max(MAX_LAPTOPS - reservedInSlot, 0);
+
+          // Si el día ya ha pasado, visualmente mostramos que están los 25 cogidos
+          if (day.iso < todayIso) {
+            reservedInSlot = MAX_LAPTOPS;
+            availableInSlot = 0;
+          }
+
+          const hasReservationInSlot = reservedInSlot > 0;
+          const isFullSlot = hasReservationInSlot && availableInSlot === 0;
+
+          const tdAvail = document.createElement("td");
+          tdAvail.textContent = availableInSlot;
+          tr.appendChild(tdAvail);
 
           classes.forEach(cls => {
             const td = document.createElement("td");
@@ -737,23 +807,38 @@
 
             const id = buildReservationId(day.iso, slot, cls);
             const isFixed = isFixedReservation(day.iso, slot, cls);
+            const info = parseReservationValue(saved[id]);
 
             if (isFixed) {
               // reserva fija del horario → siempre ocupada y no clicable
               td.classList.add("fixed-reserved");
               td.dataset.fixed = "true";
-              rowHasReservation = true;
-            } else if (saved[id]) {
+              td.dataset.count = MAX_LAPTOPS; // siempre 25
+              td.title = `${cls}: ${MAX_LAPTOPS} portátiles reservados (fijo)`;
+            } else if (info) {
+              // reserva (puede tener cantidad)
               td.classList.add("reserved");
-              rowHasReservation = true;
+              let n = info.count && info.count > 0 ? info.count : 1;
+
+              // Si el día ya ha pasado, mostramos como si tuviera los 25
+              if (day.iso < todayIso) {
+                n = MAX_LAPTOPS;
+              }
+
+              td.dataset.count = n;
+              td.title = `${cls}: ${n} portátiles reservados`;
             }
 
             tr.appendChild(td);
           });
 
-          // Si alguna celda de esta franja está reservada, coloreamos toda la fila
-          if (rowHasReservation) {
-            tr.classList.add("row-has-reservation");
+          // Coloreamos la fila según disponibilidad
+          if (hasReservationInSlot) {
+            if (isFullSlot) {
+              tr.classList.add("row-full-reservation");      // rojo suave
+            } else {
+              tr.classList.add("row-partial-reservation");   // verde suave
+            }
           }
 
           // Guardamos la primera fila del día de hoy para centrarla
@@ -796,75 +881,80 @@
       const id = buildReservationId(date, slot, className);
       const fullId = buildFullReservationId(id);
 
-      const value = currentData[id];   // puede ser undefined, true o timestamp (number)
+      const value = currentData[id];   // puede ser undefined, true, number o { time, count }
       const now   = Date.now();
 
-      // Si NO hay reserva en esta celda → queremos crear una nueva
+      // Si NO hay reserva en esta celda → crear nueva
       if (!value) {
-        // ✅ NO permitir nuevas reservas en días ya pasados
+        // No permitir nuevas reservas en días pasados
         const todayIso = getTodayIso();
         if (date < todayIso) {
           alert("No se pueden hacer nuevas reservas en días que ya han pasado.");
           return;
         }
 
-        // 1) Comprobar si el usuario YA tiene una reserva activa
-        // en esta MISMA semana (ISO) en las últimas 24h
+        // 1) Comprobar si el usuario ya tiene una reserva esa semana (lógica que ya tenías)
         const weekKey = getWeekKeyFromIso(date);
         let userInfo = getUserReservationInfoForWeek(weekKey);
 
         if (userInfo) {
-          // Desglosamos la reserva guardada: docId::resId
           const [docId, resId] = userInfo.fullId.split("::");
-
-          // Si la reserva guardada corresponde al documento (mes) actual,
-          // comprobamos si REALMENTE sigue existiendo en Firestore
           if (docId === getCurrentDocId()) {
             const stillExists = currentData && currentData[resId];
-
-            // Si ya no existe (alguien se la ha quitado), borramos la marca local de esa semana
             if (!stillExists) {
               removeUserReservationByFullId(userInfo.fullId);
-              userInfo = null; // como si no tuviera reserva esa semana
+              userInfo = null;
             }
           }
         }
 
-        // 2) Comprobar si la franja ya está ocupada por otra clase o por una reserva fija
-        const existing = getExistingReservationForSlot(date, slot);
-        if (existing) {
-          const reservedClass = existing.className || "otra clase";
-          alert(`No puedes reservar esta franja horaria porque ya está reservada por ${reservedClass}.`);
+        // 2) Si la franja está ocupada por una reserva fija de horario, nada
+        const fixed = getFixedReservationForSlot(date, slot);
+        if (fixed) {
+          alert(`Esta franja horaria está asignada de forma fija a ${fixed.className} y no se puede reservar.`);
           return;
         }
 
-        // 3) La franja está libre → crear reserva con timestamp (ms)
-        await setReservationValue(id, now);
+        // 3) Ver cuántos portátiles quedan libres en esta franja (sumando todas las clases)
+        const { remaining } = getAvailabilityForSlot(date, slot);
+        if (remaining <= 0) {
+          alert("En esta franja ya no quedan portátiles disponibles.");
+          return;
+        }
 
-        // guardar la reserva del usuario en localStorage para ESA semana
+        // 4) Preguntar cuántos quiere reservar (hasta el máximo disponible)
+        const cantidad = pedirCantidadPortatiles(remaining);
+        if (cantidad === null) return; // cancelado
+
+        await setReservationValue(id, { time: now, count: cantidad });
+
         const newWeekKey = getWeekKeyFromIso(date);
         addUserReservationForWeek(newWeekKey, fullId, now);
         return;
       }
 
-      // Si es un número, es un timestamp → comprobamos ventana de tiempo para DESHACER
-      if (typeof value === "number") {
-        const elapsed = now - value;
-        if (elapsed <= UNRESERVE_WINDOW_MS) {
-          await clearReservation(id);
-          // si esta reserva era alguna de las guardadas del usuario, la eliminamos del mapa
-          removeUserReservationByFullId(fullId);
-        } else {
-          alert("Esta reserva ya no se puede modificar.");
-        }
+      // Ya hay una reserva de ESTA clase en ESTA celda → ver si se puede deshacer
+      const resInfo = parseReservationValue(value);
+      if (!resInfo) {
+        alert("Esta reserva tiene un formato desconocido y no se puede modificar desde aquí.");
         return;
       }
 
-      // Compatibilidad con reservas antiguas (valor true): se permite borrar siempre
-      if (value === true) {
+      const t = resInfo.time;
+
+      // Reservas antiguas sin tiempo (true) → se permite borrar siempre
+      if (t === null) {
         await clearReservation(id);
         removeUserReservationByFullId(fullId);
         return;
+      }
+
+      const elapsed = now - t;
+      if (elapsed <= UNRESERVE_WINDOW_MS) {
+        await clearReservation(id);
+        removeUserReservationByFullId(fullId);
+      } else {
+        alert("Esta reserva ya no se puede modificar.");
       }
     }
 
