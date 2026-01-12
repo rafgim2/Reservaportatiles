@@ -74,7 +74,7 @@
       gap: 4px;
     }
 
-        .legend-color {
+    .legend-color {
       width: 16px;
       height: 16px;
       border-radius: 4px;
@@ -92,7 +92,6 @@
     .legend-color.reserved {
       background: #e53935; /* franja completa, sin portátiles */
     }
-
 
     .table-container {
       max-width: 100%;
@@ -193,8 +192,7 @@
       border-top-width: 3px;
     }
 
-    /* NUEVO:
-       - row-partial-reservation → hay reservas pero aún quedan portátiles (verde suave)
+    /* - row-partial-reservation → hay reservas pero aún quedan portátiles (verde suave)
        - row-full-reservation    → franja completa, 0 disponibles (rojo suave)
     */
     tbody tr.row-partial-reservation td {
@@ -202,7 +200,7 @@
     }
 
     tbody tr.row-full-reservation td {
-      background: #ffebee; /* rojo suave (como antes) */
+      background: #ffebee; /* rojo suave */
     }
 
     td.reservable {
@@ -286,7 +284,7 @@
         <label for="monthSelect">Mes:</label>
         <select id="monthSelect"></select>
       </div>
-            <div class="legend">
+      <div class="legend">
         <span class="legend-item">
           <span class="legend-color free"></span> Libre
         </span>
@@ -298,7 +296,6 @@
         </span>
         <span>Haz doble clic o doble toque para reservar / liberar.</span>
       </div>
-
     </div>
   </div>
 
@@ -312,9 +309,7 @@
     <p class="info">
       * Las reservas pueden cambiarse o cancelarse durante un máximo de 2 minutos desde el momento en que se realizan.
     </p>
-    <p class="info">
-
-    </p>
+    <p class="info"></p>
   </main>
 
   <!-- JS con Firestore -->
@@ -398,17 +393,12 @@
     function getSlotsForMonth(monthIndex) {
       const { year, month } = months[monthIndex];
       if (year === 2026 && month === 6) {
-        // En junio solo hay 5 sesiones, así que las reservas de la 6ª hora
-        // del horario fijo se ignoran automáticamente.
         return juneSlots;
       }
       return defaultSlots;
     }
 
-    /* === RESERVAS FIJAS SEGÚN LA FOTO DEL HORARIO ===
-       weekday: 1=Lunes ... 5=Viernes
-       session: 1=1ª, 2=2ª,... 6=6ª
-    */
+    /* === RESERVAS FIJAS SEGÚN LA FOTO DEL HORARIO === */
     const FIXED_WEEKLY_RESERVATIONS = [
       { weekday: 5, session: 1, className: "3ºA" }, // 1ª Viernes 3A
       { weekday: 4, session: 4, className: "5ºA" }, // 4ª Jueves 5A
@@ -451,8 +441,6 @@
       return r || null;
     }
 
-    // Normaliza los distintos formatos de reserva a { time, count }
-    // (compatibilidad con valores antiguos: true o number)
     function parseReservationValue(val) {
       if (!val) return null;
 
@@ -473,9 +461,7 @@
       return null;
     }
 
-    // Devuelve cuántos portátiles hay reservados en una franja (fecha + slot)
     function getReservedCountForSlot(dateIso, slot) {
-      // Si hay reserva fija de horario, consideramos que ocupa todos los portátiles
       const fixed = getFixedReservationForSlot(dateIso, slot);
       if (fixed) return MAX_LAPTOPS;
 
@@ -495,18 +481,16 @@
       return total;
     }
 
-    // Devuelve { reserved, remaining } para una franja
     function getAvailabilityForSlot(dateIso, slot) {
       const reserved = getReservedCountForSlot(dateIso, slot);
       const remaining = Math.max(MAX_LAPTOPS - reserved, 0);
       return { reserved, remaining };
     }
 
-    // Pide al usuario cuántos portátiles quiere reservar para esa franja
     function pedirCantidadPortatiles(max, valorPorDefecto = 1) {
       const mensaje = `¿Cuántos portátiles quieres reservar? (1–${max})`;
       const respuesta = prompt(mensaje, String(valorPorDefecto));
-      if (respuesta === null) return null; // cancelado
+      if (respuesta === null) return null;
 
       const n = parseInt(respuesta, 10);
       if (!Number.isFinite(n) || n < 1 || n > max) {
@@ -525,7 +509,6 @@
     let currentData = {};
     let unsubscribe = null;
 
-    // Para que solo auto-centre el mes de "hoy" la primera vez
     const autoScrolledMonths = {};
 
     function getCurrentDocId() {
@@ -572,11 +555,8 @@
     }
 
     // ➜ CONTROL POR USUARIO:
-    // Máx. 1 reserva POR SEMANA (semana ISO) en las últimas 24h
-    // Se guardan en localStorage por semana: { "2025-W45": { fullId, time }, ... }
     const LOCAL_USER_RES_KEY = "reservas_portatiles_mis_reservas_por_semana";
 
-    // Calcula la semana ISO (año-semana) a partir de una fecha YYYY-MM-DD
     function getWeekKeyFromIso(dateIso) {
       const [year, month, day] = dateIso.split("-").map(Number);
       const date = new Date(year, month - 1, day);
@@ -584,26 +564,21 @@
       return `${isoYear}-W${String(week).padStart(2, "0")}`;
     }
 
-    // Devuelve { isoYear, week } usando semanas ISO (lunes-domingo)
     function getISOYearWeek(date) {
       const tmp = new Date(date.valueOf());
-      // Día de la semana con lunes = 0
       const dayNr = (tmp.getDay() + 6) % 7;
-      // Colocamos la fecha en el jueves de esa semana
       tmp.setDate(tmp.getDate() - dayNr + 3);
 
       const isoYear = tmp.getFullYear();
 
-      // Jueves de la primera semana del año ISO
       const jan4 = new Date(isoYear, 0, 4);
       const jan4Day = (jan4.getDay() + 6) % 7;
       jan4.setDate(jan4.getDate() - jan4Day + 3);
 
-      const week = 1 + Math.round((tmp - jan4) / 604800000); // 604800000 = ms en una semana
+      const week = 1 + Math.round((tmp - jan4) / 604800000);
       return { isoYear, week };
     }
 
-    // Lee el mapa de reservas por semana del usuario desde localStorage
     function getUserReservationsMap() {
       try {
         const raw = localStorage.getItem(LOCAL_USER_RES_KEY);
@@ -616,22 +591,17 @@
       }
     }
 
-    // Guarda el mapa de reservas por semana
     function saveUserReservationsMap(map) {
       try {
         localStorage.setItem(LOCAL_USER_RES_KEY, JSON.stringify(map));
-      } catch {
-        // si falla localStorage, no pasa nada
-      }
+      } catch {}
     }
 
-    // Devuelve la reserva (si existe y no ha caducado) para una semana concreta
     function getUserReservationInfoForWeek(weekKey) {
       const map = getUserReservationsMap();
       const now = Date.now();
       let changed = false;
 
-      // Limpiamos reservas caducadas (> 24h)
       for (const wk in map) {
         const info = map[wk];
         if (!info || typeof info.time !== "number") {
@@ -645,21 +615,16 @@
         }
       }
 
-      if (changed) {
-        saveUserReservationsMap(map);
-      }
-
+      if (changed) saveUserReservationsMap(map);
       return map[weekKey] || null;
     }
 
-    // Añade/actualiza la reserva de una semana
     function addUserReservationForWeek(weekKey, fullId, time) {
       const map = getUserReservationsMap();
       map[weekKey] = { fullId, time };
       saveUserReservationsMap(map);
     }
 
-    // Elimina del mapa cualquier reserva que tenga ese fullId
     function removeUserReservationByFullId(fullId) {
       const map = getUserReservationsMap();
       let changed = false;
@@ -669,9 +634,7 @@
           changed = true;
         }
       }
-      if (changed) {
-        saveUserReservationsMap(map);
-      }
+      if (changed) saveUserReservationsMap(map);
     }
 
     function buildFullReservationId(id) {
@@ -679,7 +642,6 @@
       return `${docId}::${id}`;
     }
 
-    // Devuelve la fecha de hoy en formato YYYY-MM-DD (hora local)
     function getTodayIso() {
       const now = new Date();
       const y = now.getFullYear();
@@ -688,18 +650,15 @@
       return `${y}-${m}-${d}`;
     }
 
-    // ➜ NUEVA FUNCIÓN: calcula qué índice del array "months" corresponde al mes actual
     function getInitialMonthIndex() {
       const now = new Date();
       const year = now.getFullYear();
-      const month = now.getMonth() + 1; // 1–12
+      const month = now.getMonth() + 1;
 
       const idx = months.findIndex(m => m.year === year && m.month === month);
-      // Si el mes actual no está en el array, por defecto usamos el primero (0)
       return idx === -1 ? 0 : idx;
     }
 
-    // Selector de meses
     months.forEach((m, index) => {
       const opt = document.createElement("option");
       opt.value = index;
@@ -712,20 +671,13 @@
       subscribeToMonth(idx);
     });
 
-    // Obtener días lectivos (con inicial del día: L, M, X, J, V)
     function getWeekdays(year, month) {
       const days = [];
       const date = new Date(year, month - 1, 1);
-      const initials = {
-        1: "L",
-        2: "M",
-        3: "X",
-        4: "J",
-        5: "V"
-      };
+      const initials = { 1: "L", 2: "M", 3: "X", 4: "J", 5: "V" };
 
       while (date.getMonth() === month - 1) {
-        const day = date.getDay(); // 0=Dom, 1=Lun,...,6=Sab
+        const day = date.getDay();
         if (day >= 1 && day <= 5) {
           const d = String(date.getDate()).padStart(2, "0");
           const m = String(month).padStart(2, "0");
@@ -750,7 +702,6 @@
 
       calendarTable.innerHTML = "";
 
-      // CABECERA (thead)
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
       const labels = ["Fecha", "Sesión", "Portátiles disp.", ...classes];
@@ -762,78 +713,62 @@
       thead.appendChild(headerRow);
       calendarTable.appendChild(thead);
 
-      // CUERPO (tbody)
       const tbody = document.createElement("tbody");
-
-      // Fila que usaremos como "ancla" para centrar el día de hoy
       let todayAnchorRow = null;
 
       days.forEach(day => {
         const isToday = (day.iso === todayIso);
+        const isPastDay = (day.iso < todayIso);
 
         slotsForMonth.forEach((slot, slotIndex) => {
           const tr = document.createElement("tr");
 
-          // Primera franja del día → separador grueso
-          if (slotIndex === 0) {
-            tr.classList.add("first-slot-of-day");
-          }
+          if (slotIndex === 0) tr.classList.add("first-slot-of-day");
 
           const tdFecha = document.createElement("td");
           tdFecha.textContent = day.label;
-          if (isToday) {
-            tdFecha.classList.add("today-date-cell");
-          }
+          if (isToday) tdFecha.classList.add("today-date-cell");
           tr.appendChild(tdFecha);
 
           const tdSlot = document.createElement("td");
           tdSlot.textContent = slot;
           tr.appendChild(tdSlot);
 
-          // Cálculo de reservas / disponibles en la franja
+          // ✅ Reservado real (NO inflamos a 25)
           let reservedInSlot = getReservedCountForSlot(day.iso, slot);
-          let availableInSlot = Math.max(MAX_LAPTOPS - reservedInSlot, 0);
 
-          // Si el día ya ha pasado, visualmente mostramos que están los 25 cogidos
-          if (day.iso < todayIso) {
-            reservedInSlot = MAX_LAPTOPS;
-            availableInSlot = 0;
-          }
-
-          const hasReservationInSlot = reservedInSlot > 0;
-          const isFullSlot = hasReservationInSlot && availableInSlot === 0;
+          // ✅ Si es pasado: NO se puede reservar -> disponibles 0, y franja en rojo clarito
+          let availableInSlot = isPastDay ? 0 : Math.max(MAX_LAPTOPS - reservedInSlot, 0);
 
           const tdAvail = document.createElement("td");
           tdAvail.textContent = availableInSlot;
           tr.appendChild(tdAvail);
+
+          // Pintado de franja:
+          // - Si es pasado => siempre rojo clarito (como "sin portátiles")
+          // - Si no es pasado => según disponibilidad real
+          const hasReservationInSlot = isPastDay ? true : (reservedInSlot > 0);
+          const isFullSlot = isPastDay ? true : (hasReservationInSlot && availableInSlot === 0);
 
           classes.forEach(cls => {
             const td = document.createElement("td");
             td.classList.add("reservable");
             td.dataset.date = day.iso;
             td.dataset.slot = slot;
-            td.dataset.class = cls; // usado para la marca de agua
+            td.dataset.class = cls;
 
             const id = buildReservationId(day.iso, slot, cls);
             const isFixed = isFixedReservation(day.iso, slot, cls);
             const info = parseReservationValue(saved[id]);
 
             if (isFixed) {
-              // reserva fija del horario → siempre ocupada y no clicable
               td.classList.add("fixed-reserved");
               td.dataset.fixed = "true";
-              td.dataset.count = MAX_LAPTOPS; // siempre 25
+              td.dataset.count = MAX_LAPTOPS;
               td.title = `${cls}: ${MAX_LAPTOPS} portátiles reservados (fijo)`;
             } else if (info) {
-              // reserva (puede tener cantidad)
               td.classList.add("reserved");
-              let n = info.count && info.count > 0 ? info.count : 1;
-
-              // Si el día ya ha pasado, mostramos como si tuviera los 25
-              if (day.iso < todayIso) {
-                n = MAX_LAPTOPS;
-              }
-
+              const n = info.count && info.count > 0 ? info.count : 1;
               td.dataset.count = n;
               td.title = `${cls}: ${n} portátiles reservados`;
             }
@@ -841,7 +776,6 @@
             tr.appendChild(td);
           });
 
-          // Coloreamos la fila según disponibilidad
           if (hasReservationInSlot) {
             if (isFullSlot) {
               tr.classList.add("row-full-reservation");      // rojo suave
@@ -850,7 +784,6 @@
             }
           }
 
-          // Guardamos la primera fila del día de hoy para centrarla
           if (isToday && slotIndex === 0) {
             todayAnchorRow = tr;
           }
@@ -861,7 +794,6 @@
 
       calendarTable.appendChild(tbody);
 
-      // Centrar automáticamente el día de hoy en pantalla (solo 1ª vez por mes)
       if (todayAnchorRow && tableContainer) {
         const docId = `${year}-${String(month).padStart(2, "0")}`;
         if (!autoScrolledMonths[docId]) {
@@ -874,13 +806,11 @@
       }
     }
 
-    // 🧠 LÓGICA DE RESERVA / LIBERACIÓN CON DOBLE CLIC / DOBLE TOQUE
     const DOUBLE_CLICK_MS = 400;
     let lastCellId = null;
     let lastClickTime = 0;
 
     async function activarCelda(cell) {
-      // Si es una reserva fija del horario, no hacemos nada
       if (cell.dataset.fixed === "true") {
         alert("Esta franja horaria está reservada de forma fija en el horario y no se puede modificar.");
         return;
@@ -890,19 +820,16 @@
       const id = buildReservationId(date, slot, className);
       const fullId = buildFullReservationId(id);
 
-      const value = currentData[id];   // puede ser undefined, true, number o { time, count }
+      const value = currentData[id];
       const now   = Date.now();
 
-      // Si NO hay reserva en esta celda → crear nueva
       if (!value) {
-        // No permitir nuevas reservas en días pasados
         const todayIso = getTodayIso();
         if (date < todayIso) {
           alert("No se pueden hacer nuevas reservas en días que ya han pasado.");
           return;
         }
 
-        // 1) Comprobar si el usuario ya tiene una reserva esa semana (lógica que ya tenías)
         const weekKey = getWeekKeyFromIso(date);
         let userInfo = getUserReservationInfoForWeek(weekKey);
 
@@ -917,23 +844,20 @@
           }
         }
 
-        // 2) Si la franja está ocupada por una reserva fija de horario, nada
         const fixed = getFixedReservationForSlot(date, slot);
         if (fixed) {
           alert(`Esta franja horaria está asignada de forma fija a ${fixed.className} y no se puede reservar.`);
           return;
         }
 
-        // 3) Ver cuántos portátiles quedan libres en esta franja (sumando todas las clases)
         const { remaining } = getAvailabilityForSlot(date, slot);
         if (remaining <= 0) {
           alert("En esta franja ya no quedan portátiles disponibles.");
           return;
         }
 
-        // 4) Preguntar cuántos quiere reservar (hasta el máximo disponible)
         const cantidad = pedirCantidadPortatiles(remaining);
-        if (cantidad === null) return; // cancelado
+        if (cantidad === null) return;
 
         await setReservationValue(id, { time: now, count: cantidad });
 
@@ -942,7 +866,6 @@
         return;
       }
 
-      // Ya hay una reserva de ESTA clase en ESTA celda → ver si se puede deshacer
       const resInfo = parseReservationValue(value);
       if (!resInfo) {
         alert("Esta reserva tiene un formato desconocido y no se puede modificar desde aquí.");
@@ -951,7 +874,6 @@
 
       const t = resInfo.time;
 
-      // Reservas antiguas sin tiempo (true) → se permite borrar siempre
       if (t === null) {
         await clearReservation(id);
         removeUserReservationByFullId(fullId);
@@ -975,18 +897,15 @@
       const now = Date.now();
 
       if (lastCellId === uniqueId && (now - lastClickTime) <= DOUBLE_CLICK_MS) {
-        // Doble clic / doble toque → activar
         activarCelda(cell);
         lastCellId = null;
         lastClickTime = 0;
       } else {
-        // Primer clic → solo marcar el tiempo
         lastCellId = uniqueId;
         lastClickTime = now;
       }
     });
 
-    // Inicializar → seleccionar automáticamente el mes actual
     const initialIndex = getInitialMonthIndex();
     monthSelect.value = String(initialIndex);
     subscribeToMonth(initialIndex);
