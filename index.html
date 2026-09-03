@@ -276,7 +276,7 @@
   <!-- Barra superior fija -->
   <div class="top-bar">
     <header>
-      <h1>RESERVA CARRO DE PORTÁTILES</h1>
+      <h1>RESERVA CARRO DE PORTÁTILES · CURSO 2026–2027</h1>
     </header>
 
     <div class="controls">
@@ -343,14 +343,16 @@
     const db  = getFirestore(app);
 
     const months = [
-      { year: 2025, month: 11, name: "Noviembre 2025" },
-      { year: 2025, month: 12, name: "Diciembre 2025" },
-      { year: 2026, month: 1, name: "Enero 2026" },
-      { year: 2026, month: 2, name: "Febrero 2026" },
-      { year: 2026, month: 3, name: "Marzo 2026" },
-      { year: 2026, month: 4, name: "Abril 2026" },
-      { year: 2026, month: 5, name: "Mayo 2026" },
-      { year: 2026, month: 6, name: "Junio 2026" }
+      { year: 2026, month: 9, name: "Septiembre 2026" },
+      { year: 2026, month: 10, name: "Octubre 2026" },
+      { year: 2026, month: 11, name: "Noviembre 2026" },
+      { year: 2026, month: 12, name: "Diciembre 2026" },
+      { year: 2027, month: 1, name: "Enero 2027" },
+      { year: 2027, month: 2, name: "Febrero 2027" },
+      { year: 2027, month: 3, name: "Marzo 2027" },
+      { year: 2027, month: 4, name: "Abril 2027" },
+      { year: 2027, month: 5, name: "Mayo 2027" },
+      { year: 2027, month: 6, name: "Junio 2027" }
     ];
 
     const classes = [
@@ -371,7 +373,7 @@
     // Nº total de portátiles del carro
     const MAX_LAPTOPS = 25;
 
-    // Horarios normales (nov–may)
+    // Horarios normales (septiembre–mayo)
     const defaultSlots = [
       "9:00-9:45",   // 1ª
       "9:45-10:30",  // 2ª
@@ -381,7 +383,7 @@
       "13:15-14:00"  // 6ª
     ];
 
-    // Horarios especiales para JUNIO 2026 (solo 5 sesiones)
+    // Horarios especiales para JUNIO 2027 (solo 5 sesiones)
     const juneSlots = [
       "9:00-9:40",
       "9:40-10:20",
@@ -392,53 +394,24 @@
 
     function getSlotsForMonth(monthIndex) {
       const { year, month } = months[monthIndex];
-      if (year === 2026 && month === 6) {
+      if (year === 2027 && month === 6) {
         return juneSlots;
       }
       return defaultSlots;
     }
 
-    /* === RESERVAS FIJAS SEGÚN LA FOTO DEL HORARIO === */
-    const FIXED_WEEKLY_RESERVATIONS = [
-      { weekday: 5, session: 1, className: "3ºA" }, // 1ª Viernes 3A
-      { weekday: 4, session: 4, className: "5ºA" }, // 4ª Jueves 5A
-      { weekday: 5, session: 4, className: "1ºA" }, // 4ª Viernes 1A
-      { weekday: 4, session: 5, className: "4ºA" }, // 5ª Jueves 4A
-      { weekday: 3, session: 6, className: "6ºB" }, // 6ª Miércoles 6B
-      { weekday: 4, session: 6, className: "6ºA" }, // 6ª Jueves 6A
-      { weekday: 5, session: 6, className: "5ºB" }  // 6ª Viernes 5B
-    ];
+    /* === RESERVAS FIJAS DEL HORARIO ===
+       Curso 2026-2027: todavía no hay ninguna asignada.
+       Cuando exista un horario fijo, se puede volver a añadir aquí.
+    */
+    const FIXED_WEEKLY_RESERVATIONS = [];
 
     function isFixedReservation(dateIso, slot, className) {
-      const d = new Date(dateIso);
-      const weekday = d.getDay(); // 0=Dom,1=Lun,…,5=Vie
-      if (weekday < 1 || weekday > 5) return false;
-
-      const slotsForMonth = getSlotsForMonth(currentMonthIndex);
-      const idx = slotsForMonth.indexOf(slot);
-      if (idx === -1) return false;
-      const session = idx + 1;
-
-      return FIXED_WEEKLY_RESERVATIONS.some(
-        r => r.weekday === weekday && r.session === session && r.className === className
-      );
+      return false;
     }
 
-    // Devuelve si una franja (fecha+slot) está ocupada por una reserva fija, aunque sea otra clase
     function getFixedReservationForSlot(dateIso, slot) {
-      const d = new Date(dateIso);
-      const weekday = d.getDay();
-      if (weekday < 1 || weekday > 5) return null;
-
-      const slotsForMonth = getSlotsForMonth(currentMonthIndex);
-      const idx = slotsForMonth.indexOf(slot);
-      if (idx === -1) return null;
-      const session = idx + 1;
-
-      const r = FIXED_WEEKLY_RESERVATIONS.find(
-        x => x.weekday === weekday && x.session === session
-      );
-      return r || null;
+      return null;
     }
 
     function parseReservationValue(val) {
